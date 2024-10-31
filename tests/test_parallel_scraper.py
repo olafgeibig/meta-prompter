@@ -1,7 +1,7 @@
 import pytest
 from pathlib import Path
 from unittest.mock import Mock, patch
-from parallel_scraper import ParallelScraper
+from src.parallel_scraper import ParallelScraper
 
 @pytest.fixture
 def scraper():
