@@ -1,7 +1,7 @@
 import pytest
 from pathlib import Path
 from unittest.mock import Mock, patch
-from src.parallel_scraper import ParallelScraper
+from meta_prompter.parallel_scraper import ParallelScraper
 
 @pytest.fixture
 def scraper():
@@ -9,7 +9,7 @@ def scraper():
 
 @pytest.fixture
 def mock_jina_reader():
-    with patch('parallel_scraper.JinaReader') as mock:
+    with patch('meta_prompter.parallel_scraper.JinaReader') as mock:
         mock_instance = Mock()
         mock.return_value = mock_instance
         mock_instance.read_website.return_value = "# Test Title\nTest content"

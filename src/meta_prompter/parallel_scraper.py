@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import List, Optional
 import re
 import logging
-from jina_reader import JinaReader
+from meta_prompter.jina_reader import JinaReader
 
 logging.basicConfig(
     level=logging.INFO,
