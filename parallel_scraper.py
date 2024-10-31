@@ -3,7 +3,13 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import List, Optional
 import re
+import logging
 from jina_reader import JinaReader
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 
 class ParallelScraper:
     MAX_SCRAPERS = 3  # Default number of parallel scrapers
@@ -37,10 +43,10 @@ class ParallelScraper:
             output_path = self.output_dir / filename
             
             output_path.write_text(content)
-            print(f"Successfully scraped {url} to {output_path}")
+            logging.info(f"Successfully scraped {url} to {output_path}")
             
         except Exception as e:
-            print(f"Error scraping {url}: {str(e)}")
+            logging.error(f"Error scraping {url}: {str(e)}")
 
     def scrape_urls(self, urls: List[str]) -> None:
         """Scrape multiple URLs in parallel."""
