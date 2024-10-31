@@ -50,13 +50,25 @@ def test_scrape_urls(scraper, mock_jina_reader, tmp_path):
         "https://example.com/3",
     ]
     
+    # Configure mock to return different content for each URL
+    def side_effect(url):
+        url_num = url.split('/')[-1]
+        return f"# Test Title {url_num}\nTest content {url_num}"
+    
+    mock_jina_reader.read_website.side_effect = side_effect
+    
     scraper.scrape_urls(test_urls)
     
     # Verify JinaReader was called for each URL
     assert mock_jina_reader.read_website.call_count == len(test_urls)
     
     # Verify files were created
-    assert len(list(tmp_path.glob("*.md"))) == len(test_urls)
+    created_files = list(tmp_path.glob("*.md"))
+    assert len(created_files) == len(test_urls)
+    
+    # Verify each file has unique content
+    file_contents = {f.name: f.read_text() for f in created_files}
+    assert len(file_contents) == len(test_urls)
 
 def test_error_handling(scraper, mock_jina_reader, tmp_path, caplog):
     """Test error handling during scraping"""
