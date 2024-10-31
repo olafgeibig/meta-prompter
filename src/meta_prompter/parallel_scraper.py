@@ -15,10 +15,10 @@ class ParallelScraper:
     MAX_SCRAPERS = 3  # Default number of parallel scrapers
     OUTPUT_DIR = Path("scraped_content")  # Default output directory
 
-    def __init__(self, max_scrapers: Optional[int] = None, output_dir: Optional[Path] = None):
+    def __init__(self, max_scrapers: Optional[int] = None, output_dir: Optional[Path] = None, jina_reader: Optional[JinaReader] = None):
         self.max_scrapers = max_scrapers or self.MAX_SCRAPERS
         self.output_dir = output_dir or self.OUTPUT_DIR
-        self.jina_reader = JinaReader()
+        self.jina_reader = jina_reader or JinaReader()
         self.output_dir.mkdir(exist_ok=True, parents=True)
 
     def _sanitize_filename(self, title: str) -> str:

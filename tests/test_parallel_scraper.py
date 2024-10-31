@@ -1,11 +1,12 @@
 import pytest
+import logging
 from pathlib import Path
 from unittest.mock import Mock, patch
 from meta_prompter.parallel_scraper import ParallelScraper
 
 @pytest.fixture
-def scraper():
-    return ParallelScraper(max_scrapers=2, output_dir=Path("test_output"))
+def scraper(mock_jina_reader):
+    return ParallelScraper(max_scrapers=2, output_dir=Path("test_output"), jina_reader=mock_jina_reader)
 
 @pytest.fixture
 def mock_jina_reader():
@@ -59,6 +60,7 @@ def test_scrape_urls(scraper, mock_jina_reader, tmp_path):
 
 def test_error_handling(scraper, mock_jina_reader, tmp_path, caplog):
     """Test error handling during scraping"""
+    caplog.set_level(logging.ERROR)
     scraper.output_dir = tmp_path
     test_url = "https://example.com/error"
     
