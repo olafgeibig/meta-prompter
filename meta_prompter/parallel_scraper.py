@@ -13,7 +13,7 @@ logging.basicConfig(
 
 class ParallelScraper:
     MAX_SCRAPERS = 3  # Default number of parallel scrapers
-    OUTPUT_DIR = Path("scraped_content")  # Default output directory
+    OUTPUT_DIR = Path("output")  # Default output directory
 
     def __init__(self, max_scrapers: Optional[int] = None, output_dir: Optional[Path] = None, jina_reader: Optional[JinaReader] = None):
         self.max_scrapers = max_scrapers or self.MAX_SCRAPERS
@@ -60,14 +60,3 @@ class ParallelScraper:
                     future.result()  # This will raise any exceptions that occurred
                 except Exception as e:
                     logging.error(f"Task failed with error: {str(e)}")
-
-if __name__ == "__main__":
-    # Example usage
-    urls_to_scrape = [
-        "https://docs.crewai.com/concepts/agents",
-        "https://docs.crewai.com/concepts/tasks",
-        "https://docs.crewai.com/concepts/crews",
-    ]
-    
-    scraper = ParallelScraper(max_scrapers=3, output_dir=Path("output"))
-    scraper.scrape_urls(urls_to_scrape)

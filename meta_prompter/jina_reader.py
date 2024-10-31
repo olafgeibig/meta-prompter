@@ -48,14 +48,3 @@ class JinaReader:
                 content += f"- [{name}]({image_url})\n"
 
         return content
-
-if __name__ == "__main__":
-    reader = JinaReader()
-    url = "https://docs.crewai.com/concepts/agents"
-    markdown_content = reader.read_website(url)
-    print(markdown_content)
-
-    # Optionally, save the content to a file
-    # output_file = Path("output.md")
-    # output_file.write_text(markdown_content)
-    # print(f"Content saved to {output_file}")
