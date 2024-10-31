@@ -31,13 +31,14 @@ class ParallelScraper:
     def _scrape_single_url(self, url: str) -> None:
         """Scrape a single URL and save its content."""
         try:
+            logging.info(f"Starting to scrape {url}")
             content = self.jina_reader.read_website(url)
+            if not content:
+                raise ValueError(f"No content returned for {url}")
             
             # Extract title from the first line of content
-            title = content.split('\n')[0].strip('# ')
-            if not title:
-                # Use URL as fallback if no title found
-                title = url.split('/')[-1]
+            lines = content.split('\n')
+            title = lines[0].strip('# ') if lines else url.split('/')[-1]
             
             filename = self._sanitize_filename(title)
             output_path = self.output_dir / filename
@@ -51,7 +52,14 @@ class ParallelScraper:
     def scrape_urls(self, urls: List[str]) -> None:
         """Scrape multiple URLs in parallel."""
         with ThreadPoolExecutor(max_workers=self.max_scrapers) as executor:
-            executor.map(self._scrape_single_url, urls)
+            # Submit all tasks and wait for them to complete
+            futures = [executor.submit(self._scrape_single_url, url) for url in urls]
+            # Wait for all futures to complete
+            for future in futures:
+                try:
+                    future.result()  # This will raise any exceptions that occurred
+                except Exception as e:
+                    logging.error(f"Task failed with error: {str(e)}")
 
 if __name__ == "__main__":
     # Example usage
