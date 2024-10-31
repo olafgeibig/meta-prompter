@@ -19,4 +19,21 @@ app = "meta_prompter:main"
 
 [build-system]
 requires = ["hatchling"]
-build-backend = "hatchling.build"
+build-backend = "hatchling.build"[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "meta_prompter"
+version = "0.1.0"
+authors = [
+    {name = "Your Name", email = "your.email@example.com"},
+]
+description = "A tool for parallel web scraping"
+requires-python = ">=3.11"
+dependencies = [
+    "jina",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
