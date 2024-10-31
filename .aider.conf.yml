@@ -1,0 +1,19 @@
+# model: deepseek/deepseek-chat
+model: claude-3-5-sonnet-20241022
+# model: openrouter/openai/o1-preview
+
+env-file: .env.aider
+cache-prompts: true
+cache-keepalive-pings: 5
+light-mode: true
+auto-commits: true
+test-cmd: pytest
+auto-test: true
+stream: false
+
+architect: true
+# editor-model: deepseek/deepseek-chat
+editor-model: claude-3-5-sonnet-20241022
+# editor-edit-format: diff
+
+read: [specs/CONVENTIONS.md, specs/project.md, specs/mvp.md]
