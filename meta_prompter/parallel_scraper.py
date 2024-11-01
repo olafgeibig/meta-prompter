@@ -32,18 +32,18 @@ class ParallelScraper:
         """Scrape a single URL and save its content."""
         try:
             logging.info(f"Starting to scrape {url}")
-            content = self.jina_reader.read_website(url)
-            if not content:
+            response = self.jina_reader.scrape_website(url)
+            if not response.content:
                 raise ValueError(f"No content returned for {url}")
             
             # Extract title from the first line of content
-            lines = content.split('\n')
+            lines = response.content.split('\n')
             title = lines[0].strip('# ') if lines else url.split('/')[-1]
             
             filename = self._sanitize_filename(title)
             output_path = self.output_dir / filename
             
-            output_path.write_text(content)
+            output_path.write_text(response.content)
             logging.info(f"Successfully scraped {url} to {output_path}")
             
         except Exception as e:

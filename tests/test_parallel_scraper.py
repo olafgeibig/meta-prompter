@@ -3,6 +3,7 @@ import logging
 from pathlib import Path
 from unittest.mock import Mock, patch
 from meta_prompter.parallel_scraper import ParallelScraper
+from meta_prompter.custom_types import ScraperResponse
 
 @pytest.fixture
 def scraper(mock_jina_reader):
@@ -13,7 +14,10 @@ def mock_jina_reader():
     with patch('meta_prompter.parallel_scraper.JinaReader') as mock:
         mock_instance = Mock()
         mock.return_value = mock_instance
-        mock_instance.read_website.return_value = "# Test Title\nTest content"
+        mock_instance.scrape_website.return_value = ScraperResponse(
+            content="# Test Title\nTest content",
+            links=[]
+        )
         yield mock_instance
 
 def test_sanitize_filename(scraper):
@@ -34,7 +38,7 @@ def test_scrape_single_url(scraper, mock_jina_reader, tmp_path):
     scraper._scrape_single_url(test_url)
     
     # Verify JinaReader was called correctly
-    mock_jina_reader.read_website.assert_called_once_with(test_url)
+    mock_jina_reader.scrape_website.assert_called_once_with(test_url)
     
     # Verify file was created with correct content
     output_file = tmp_path / "Test_Title.md"
@@ -53,14 +57,17 @@ def test_scrape_urls(scraper, mock_jina_reader, tmp_path):
     # Configure mock to return different content for each URL
     def side_effect(url):
         url_num = url.split('/')[-1]
-        return f"# Test Title {url_num}\nTest content {url_num}"
+        return ScraperResponse(
+            content=f"# Test Title {url_num}\nTest content {url_num}",
+            links=[]
+        )
     
-    mock_jina_reader.read_website.side_effect = side_effect
+    mock_jina_reader.scrape_website.side_effect = side_effect
     
     scraper.scrape_urls(test_urls)
     
     # Verify JinaReader was called for each URL
-    assert mock_jina_reader.read_website.call_count == len(test_urls)
+    assert mock_jina_reader.scrape_website.call_count == len(test_urls)
     
     # Verify files were created
     created_files = list(tmp_path.glob("*.md"))
