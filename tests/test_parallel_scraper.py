@@ -84,7 +84,7 @@ def test_error_handling(scraper, mock_jina_reader, tmp_path, caplog):
     test_url = "https://example.com/error"
     
     # Make the reader raise an exception
-    mock_jina_reader.read_website.side_effect = Exception("Test error")
+    mock_jina_reader.scrape_website.side_effect = Exception("Test error")
     
     scraper._scrape_single_url(test_url)
     
