@@ -99,3 +99,37 @@ def test_error_handling(scraper, mock_jina_reader, tmp_path, caplog):
     # Verify error was logged
     assert "Error scraping" in caplog.text
     assert "Test error" in caplog.text
+
+def test_no_duplicate_scraping(scraper, mock_jina_reader, tmp_path):
+    """Test that URLs are never scraped more than once"""
+    scraper.output_dir = tmp_path
+    test_urls = ["https://example.com/1"]
+    
+    # Configure mock to return a response with links
+    mock_jina_reader.scrape_website.return_value = ScraperResponse(
+        content="# Test Title\nTest content",
+        links=["https://example.com/2", "https://example.com/3"]
+    )
+    
+    # Create a job and run the spider multiple times
+    job = ScrapingJob(
+        name="test_no_duplicates",
+        seed_urls=test_urls,
+        follow_links=True
+    )
+    
+    # Run spider twice
+    scraper.run_spider(job)
+    scraper.run_spider(job)  # Second run should not re-scrape anything
+    
+    # Verify each URL was only scraped once
+    call_urls = [call[0][0] for call in mock_jina_reader.scrape_website.call_args_list]
+    unique_urls = set(call_urls)
+    assert len(call_urls) == len(unique_urls), "Some URLs were scraped multiple times"
+    
+    # Verify all discovered pages are marked as done
+    assert all(page.done for page in job.pages), "Not all pages were marked as done"
+    
+    # Verify statistics
+    stats = job.get_statistics()
+    assert stats["pages_scraped"] == stats["total_pages_discovered"], "Not all discovered pages were scraped"
