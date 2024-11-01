@@ -1,7 +1,93 @@
-from typing import List, Optional
-from pydantic import BaseModel, Field
+from typing import List, Optional, Dict, Set
+from datetime import datetime
+from pydantic import BaseModel, Field, HttpUrl
+import logging
+
+class Page(BaseModel):
+    url: str
+    done: bool = False
+    scraped_at: Optional[datetime] = None
 
 class ScraperResponse(BaseModel):
     content: str = Field(..., description="The main textual content extracted from the page.")
     links: Optional[List[str]] = Field(default_factory=list, description="List of URLs extracted from the page, if available.")
     images: Optional[List[str]] = Field(default_factory=list, description="List of image URLs extracted from the page, if available.")
+
+class ScrapingJob(BaseModel):
+    name: str = Field(..., description="Name of the scraping job")
+    seed_urls: List[HttpUrl] = Field(..., description="Initial URLs to start scraping from")
+    pages: Set[Page] = Field(default_factory=set, description="All pages discovered and their status")
+    follow_links: bool = Field(default=True, description="Whether to follow links found in pages")
+    domain_restricted: bool = Field(default=True, description="Whether to restrict scraping to the same domain as seed URLs")
+    created_at: datetime = Field(default_factory=datetime.now)
+    updated_at: datetime = Field(default_factory=datetime.now)
+    max_pages: Optional[int] = Field(default=None, description="Maximum number of pages to scrape (None for unlimited)")
+    depth: Optional[int] = Field(default=None, description="Maximum depth of link following (None for unlimited)")
+    _url_depths: Dict[str, int] = Field(default_factory=dict, exclude=True)
+
+    def __init__(self, **data):
+        super().__init__(**data)
+        # Initialize depth tracking for seed URLs
+        for url in self.seed_urls:
+            self._url_depths[str(url)] = 0
+
+    def add_page(self, url: str, source_url: Optional[str] = None) -> bool:
+        """
+        Add a new page to the job if it doesn't exist and meets criteria
+        Returns True if page was added, False otherwise
+        """
+        if self.max_pages and len(self.pages) >= self.max_pages:
+            logging.info(f"Maximum pages limit ({self.max_pages}) reached")
+            return False
+
+        # Calculate depth for the new URL
+        if source_url:
+            new_depth = self._url_depths.get(str(source_url), 0) + 1
+            if self.depth is not None and new_depth > self.depth:
+                logging.info(f"Maximum depth ({self.depth}) reached for {url}")
+                return False
+            self._url_depths[str(url)] = new_depth
+
+        if not self.is_url_scraped(url):
+            self.pages.add(Page(url=url))
+            return True
+        return False
+    
+    def mark_page_done(self, url: str) -> None:
+        """Mark a page as scraped with timestamp"""
+        old_page = next((p for p in self.pages if p.url == url), None)
+        if old_page:
+            self.pages.remove(old_page)
+            self.pages.add(Page(url=url, done=True, scraped_at=datetime.now()))
+        self.updated_at = datetime.now()
+    
+    def get_pending_urls(self) -> List[str]:
+        """Get list of URLs that haven't been scraped yet"""
+        return [str(page.url) for page in self.pages if not page.done]
+    
+    def is_url_scraped(self, url: str) -> bool:
+        """Check if a URL has already been scraped"""
+        return any(page.done and str(page.url) == str(url) for page in self.pages)
+    
+    def should_scrape_url(self, url: str) -> bool:
+        """Determine if a URL should be scraped based on job settings"""
+        try:
+            if self.domain_restricted:
+                # Get domains from seed URLs
+                seed_domains = {HttpUrl(seed_url).host for seed_url in self.seed_urls}
+                new_domain = HttpUrl(url).host
+                return new_domain in seed_domains
+            return True
+        except Exception as e:
+            logging.warning(f"Invalid URL {url}: {str(e)}")
+            return False
+
+    def get_statistics(self) -> dict:
+        """Get current job statistics"""
+        return {
+            "total_pages_discovered": len(self.pages),
+            "pages_scraped": len([p for p in self.pages if p.done]),
+            "pages_pending": len(self.get_pending_urls()),
+            "max_depth_reached": max(self._url_depths.values()) if self._url_depths else 0,
+            "running_time": (datetime.now() - self.created_at).total_seconds()
+        }
