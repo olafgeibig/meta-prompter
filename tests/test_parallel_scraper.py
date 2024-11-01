@@ -3,7 +3,7 @@ import logging
 from pathlib import Path
 from unittest.mock import Mock, patch
 from meta_prompter.parallel_scraper import ParallelScraper
-from meta_prompter.custom_types import ScraperResponse
+from meta_prompter.custom_types import ScraperResponse, ScrapingJob
 
 @pytest.fixture
 def scraper(mock_jina_reader):
