@@ -4,7 +4,9 @@ from pathlib import Path
 from typing import List, Optional
 import re
 import logging
+from datetime import datetime
 from meta_prompter.jina_reader import JinaReader
+from meta_prompter.custom_types import ScrapingJob
 
 logging.basicConfig(
     level=logging.INFO,
