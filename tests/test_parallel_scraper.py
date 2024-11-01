@@ -34,8 +34,12 @@ def test_scrape_single_url(scraper, mock_jina_reader, tmp_path):
     """Test scraping a single URL"""
     scraper.output_dir = tmp_path
     test_url = "https://example.com/test"
-    
-    scraper._scrape_single_url(test_url)
+        
+    job = ScrapingJob(
+        name="test_job",
+        seed_urls=[test_url]
+    )
+    scraper._scrape_single_url(test_url, job)
     
     # Verify JinaReader was called correctly
     mock_jina_reader.scrape_website.assert_called_once_with(test_url)
@@ -82,11 +86,15 @@ def test_error_handling(scraper, mock_jina_reader, tmp_path, caplog):
     caplog.set_level(logging.ERROR)
     scraper.output_dir = tmp_path
     test_url = "https://example.com/error"
-    
+        
     # Make the reader raise an exception
     mock_jina_reader.scrape_website.side_effect = Exception("Test error")
-    
-    scraper._scrape_single_url(test_url)
+        
+    job = ScrapingJob(
+        name="test_job",
+        seed_urls=[test_url]
+    )
+    scraper._scrape_single_url(test_url, job)
     
     # Verify error was logged
     assert "Error scraping" in caplog.text

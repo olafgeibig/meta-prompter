@@ -8,6 +8,14 @@ class Page(BaseModel):
     done: bool = False
     scraped_at: Optional[datetime] = None
 
+    def __hash__(self):
+        return hash(self.url)
+    
+    def __eq__(self, other):
+        if not isinstance(other, Page):
+            return False
+        return self.url == other.url
+
 class ScraperResponse(BaseModel):
     content: str = Field(..., description="The main textual content extracted from the page.")
     links: Optional[List[str]] = Field(default_factory=list, description="List of URLs extracted from the page, if available.")
