@@ -109,7 +109,7 @@ class ParallelScraper:
         Scraping job completed:
         - Total pages discovered: {stats['total_pages_discovered']}
         - Pages scraped: {stats['pages_scraped']}
-        - Maximum depth reached: {stats['max_depth_reached']}
+        - Pages pending: {stats['pages_pending']}
         - Total time: {duration:.2f} seconds
         """)
 
