@@ -2,24 +2,6 @@ import pytest
 from datetime import datetime, timedelta
 from meta_prompter.custom_types import ScrapingJob, Page
 
-def test_scraping_job_depth_limit():
-    """Test that scraping job respects depth limits"""
-    job = ScrapingJob(
-        name="test_depth",
-        seed_urls=["https://example.com"],
-        depth=2
-    )
-    
-    # Simulate adding pages at different depths
-    job.add_page("https://example.com")  # depth 0
-    job.add_page("https://example.com/page1", "https://example.com")  # depth 1
-    job.add_page("https://example.com/page2", "https://example.com/page1")  # depth 2
-    
-    # This should not be added (depth 3)
-    result = job.add_page("https://example.com/page3", "https://example.com/page2")
-    assert not result
-    assert len(job.pages) == 3
-
 def test_scraping_job_max_pages():
     """Test that scraping job respects maximum pages limit"""
     job = ScrapingJob(
@@ -28,9 +10,14 @@ def test_scraping_job_max_pages():
         max_pages=2
     )
     
-    assert job.add_page("https://example.com/page1")
-    assert job.add_page("https://example.com/page2")
-    assert not job.add_page("https://example.com/page3")
+    urls = [
+        "https://example.com/page1",
+        "https://example.com/page2",
+        "https://example.com/page3"
+    ]
+    
+    added_urls = job.add_urls(urls)
+    assert len(added_urls) == 2
     assert len(job.pages) == 2
 
 def test_scraping_job_domain_restriction():
@@ -41,10 +28,16 @@ def test_scraping_job_domain_restriction():
         domain_restricted=True
     )
     
-    assert job.should_scrape_url("https://example.com/page1")
-    assert job.should_scrape_url("https://example.com/sub/page2")
-    assert not job.should_scrape_url("https://other-domain.com")
-    assert not job.should_scrape_url("invalid-url")
+    urls = [
+        "https://example.com/page1",
+        "https://example.com/sub/page2",
+        "https://other-domain.com",
+        "invalid-url"
+    ]
+    
+    added_urls = job.add_urls(urls)
+    assert len(added_urls) == 2
+    assert all(url.startswith("https://example.com") for url in added_urls)
 
 def test_scraping_job_statistics():
     """Test statistics gathering"""

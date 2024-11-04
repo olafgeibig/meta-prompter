@@ -31,13 +31,13 @@ class ParallelScraper:
         sanitized = sanitized.replace(' ', '_')
         return f"{sanitized}.md"
 
-    def _scrape_single_url(self, url: str, job: ScrapingJob) -> List[str]:
-        """Scrape a single URL and return discovered links."""
+    def _scrape_single_url(self, url: str, job: ScrapingJob) -> None:
+        """Scrape a single URL and add discovered links to job."""
         try:
             # Double-check if the URL has already been scraped
             if job.is_url_scraped(url):
                 logging.info(f"Skipping already scraped URL: {url}")
-                return []
+                return
 
             logging.info(f"Starting to scrape {url}")
             response = self.jina_reader.scrape_website(url)
@@ -59,18 +59,10 @@ class ParallelScraper:
             job.mark_page_done(url)
             
             # Process discovered links
-            discovered_links = []
             if job.follow_links and response.links:
-                for link in response.links:
-                    if (
-                        job.should_scrape_url(link) 
-                        and not job.is_url_scraped(link)
-                        and link not in discovered_links
-                    ):
-                        if job.add_page(link, source_url=url):  # Pass source URL for depth tracking
-                            discovered_links.append(link)
-            
-            return discovered_links
+                added_urls = job.add_urls(response.links)
+                if added_urls:
+                    logging.info(f"Added {len(added_urls)} new URLs to scrape")
             
         except Exception as e:
             logging.error(f"Error scraping {url}: {str(e)}")

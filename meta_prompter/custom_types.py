@@ -40,36 +40,23 @@ class ScrapingJob(BaseModel):
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
     max_pages: Optional[int] = Field(default=None, description="Maximum number of pages to scrape (None for unlimited)")
-    depth: Optional[int] = Field(default=None, description="Maximum depth of link following (None for unlimited)")
-    url_depths: Dict[str, int] = Field(default_factory=dict, exclude=True)
 
-    def __init__(self, **data):
-        super().__init__(**data)
-        # Initialize depth tracking for seed URLs
-        for url in self.seed_urls:
-            self.url_depths[str(url)] = 0
-
-    def add_page(self, url: str, source_url: Optional[str] = None) -> bool:
+    def add_urls(self, urls: List[str]) -> List[str]:
         """
-        Add a new page to the job if it doesn't exist and meets criteria
-        Returns True if page was added, False otherwise
+        Add multiple URLs to the job if they meet criteria
+        Returns list of URLs that were actually added
         """
-        if self.max_pages and len(self.pages) >= self.max_pages:
-            logging.info(f"Maximum pages limit ({self.max_pages}) reached")
-            return False
+        added_urls = []
+        for url in urls:
+            if self.max_pages and len(self.pages) >= self.max_pages:
+                logging.info(f"Maximum pages limit ({self.max_pages}) reached")
+                break
 
-        # Calculate depth for the new URL
-        if source_url:
-            new_depth = self.url_depths.get(str(source_url), 0) + 1
-            if self.depth is not None and new_depth > self.depth:
-                logging.info(f"Maximum depth ({self.depth}) reached for {url}")
-                return False
-            self.url_depths[str(url)] = new_depth
-
-        if not self.is_url_scraped(url):
-            self.pages.add(Page(url=str(url)))
-            return True
-        return False
+            if not self.is_url_scraped(url) and self.should_scrape_url(url):
+                self.pages.add(Page(url=str(url)))
+                added_urls.append(url)
+        
+        return added_urls
     
     def mark_page_done(self, url: str) -> None:
         """Mark a page as scraped with timestamp"""
@@ -106,6 +93,5 @@ class ScrapingJob(BaseModel):
             "total_pages_discovered": len(self.pages),
             "pages_scraped": len([p for p in self.pages if p.done]),
             "pages_pending": len(self.get_pending_urls()),
-            "max_depth_reached": max(self.url_depths.values()) if self.url_depths else 0,
             "running_time": (datetime.now() - self.created_at).total_seconds()
         }
