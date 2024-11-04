@@ -1,6 +1,14 @@
 from meta_prompter.parallel_scraper import ParallelScraper
 import logging
 
+    def scrape_urls(self, urls: List[str]) -> None:
+        """Scrape multiple URLs using a ScrapingJob"""
+        job = ScrapingJob(
+            name=f"scrape_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+            seed_urls=urls
+        )
+        self.run_spider(job)
+
 def main():
     # Configure logging
     logging.basicConfig(
