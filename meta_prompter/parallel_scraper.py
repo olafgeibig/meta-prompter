@@ -53,6 +53,7 @@ class ParallelScraper:
             output_path = self.output_dir / filename
             
             output_path.write_text(response.content)
+            logging.info(f"Discovered {len(response.links)} URLs in the page {url}")
             logging.info(f"Successfully scraped {url} to {output_path}")
             
             # Mark the page as done in the job
@@ -112,11 +113,3 @@ class ParallelScraper:
         - Pages pending: {stats['pages_pending']}
         - Total time: {duration:.2f} seconds
         """)
-
-    def scrape_urls(self, urls: List[str]) -> None:
-        """Scrape multiple URLs using a ScrapingJob"""
-        job = ScrapingJob(
-            name=f"scrape_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
-            seed_urls=urls
-        )
-        self.run_spider(job)

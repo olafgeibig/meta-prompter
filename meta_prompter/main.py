@@ -1,5 +1,6 @@
 from meta_prompter.parallel_scraper import ParallelScraper
 import logging
+from meta_prompter.custom_types import ScrapingJob
 
 
 def main():
@@ -12,12 +13,15 @@ def main():
     # Create scraper instance
     scraper = ParallelScraper()
 
-    # URL to scrape
-    urls = ["https://docs.crewai.com/concepts/agents"]
+    job = ScrapingJob(
+        name="crewAI",
+        seed_urls = ["https://docs.crewai.com/concepts/agents"],
+        max_pages=5
+    )
 
     try:
         # Perform scraping
-        scraper.scrape_urls(urls)
+        scraper.run_spider(job)
         logging.info("Scraping completed successfully")
     except Exception as e:
         logging.error(f"Scraping failed: {str(e)}")
