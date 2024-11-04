@@ -15,6 +15,16 @@ class Page(BaseModel):
         if not isinstance(other, Page):
             return False
         return self.url == other.url
+    
+    @classmethod
+    def __get_validators__(cls):
+        yield cls.validate_url
+
+    @classmethod
+    def validate_url(cls, v):
+        if isinstance(v, HttpUrl):
+            return str(v)
+        return v
 
 class ScraperResponse(BaseModel):
     content: str = Field(..., description="The main textual content extracted from the page.")

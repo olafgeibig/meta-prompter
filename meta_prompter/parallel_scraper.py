@@ -5,6 +5,7 @@ from typing import List, Optional
 import re
 import logging
 from datetime import datetime
+from pydantic import HttpUrl
 from meta_prompter.jina_reader import JinaReader
 from meta_prompter.custom_types import ScrapingJob
 
@@ -120,3 +121,11 @@ class ParallelScraper:
         - Maximum depth reached: {stats['max_depth_reached']}
         - Total time: {duration:.2f} seconds
         """)
+
+    def scrape_urls(self, urls: List[str]) -> None:
+        """Scrape multiple URLs using a ScrapingJob"""
+        job = ScrapingJob(
+            name=f"scrape_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+            seed_urls=urls
+        )
+        self.run_spider(job)
