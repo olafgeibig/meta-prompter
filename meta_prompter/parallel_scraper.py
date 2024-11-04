@@ -73,8 +73,7 @@ class ParallelScraper:
         start_time = datetime.now()
         
         # Initialize job with seed URLs
-        for url in job.seed_urls:
-            job.add_page(url)
+        job.add_urls([str(url) for url in job.seed_urls])
 
         with ThreadPoolExecutor(max_workers=self.max_scrapers) as executor:
             while True:

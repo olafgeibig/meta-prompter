@@ -47,8 +47,7 @@ def test_scraping_job_statistics():
     )
     
     # Add some pages and mark some as done
-    job.add_page("https://example.com/page1")
-    job.add_page("https://example.com/page2")
+    job.add_urls(["https://example.com/page1", "https://example.com/page2"])
     job.mark_page_done("https://example.com/page1")
     
     stats = job.get_statistics()

@@ -57,6 +57,14 @@ class ScrapingJob(BaseModel):
                 added_urls.append(url)
         
         return added_urls
+
+    def add_page(self, url: str) -> bool:
+        """
+        Legacy method for compatibility - adds a single page
+        Returns True if page was added, False otherwise
+        """
+        added = self.add_urls([url])
+        return bool(added)
     
     def mark_page_done(self, url: str) -> None:
         """Mark a page as scraped with timestamp"""
