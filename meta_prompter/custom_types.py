@@ -67,7 +67,7 @@ class ScrapingJob(BaseModel):
             self.url_depths[str(url)] = new_depth
 
         if not self.is_url_scraped(url):
-            self.pages.add(Page(url=url))
+            self.pages.add(Page(url=str(url)))
             return True
         return False
     
