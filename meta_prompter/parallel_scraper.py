@@ -69,7 +69,7 @@ class ParallelScraper:
             logging.error(f"Error scraping {url}: {str(e)}")
             return []
 
-    def run(self, job: ScrapingJob) -> None:
+    def run_spider(self, job: ScrapingJob) -> None:
         """Run spider starting from seed URLs."""
         start_time = datetime.now()
         

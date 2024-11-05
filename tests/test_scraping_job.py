@@ -16,7 +16,7 @@ def test_scraping_job_max_pages():
         "https://example.com/page3"
     ]
     
-    added_urls = job.add_urls(urls)
+    added_urls = job.add_urls(urls, "https://example.com")
     assert len(added_urls) == 2
     assert len(job.pages) == 2
 
@@ -35,7 +35,7 @@ def test_scraping_job_domain_restriction():
         "invalid-url"
     ]
     
-    added_urls = job.add_urls(urls)
+    added_urls = job.add_urls(urls, "https://example.com")
     assert len(added_urls) == 2
     assert all(url.startswith("https://example.com") for url in added_urls)
 
@@ -77,7 +77,7 @@ def test_scraping_job_statistics():
     )
     
     # Add some pages and mark some as done
-    job.add_urls(["https://example.com/page1", "https://example.com/page2"])
+    job.add_urls(["https://example.com/page1", "https://example.com/page2"], "https://example.com")
     job.mark_page_done("https://example.com/page1")
     
     stats = job.get_statistics()

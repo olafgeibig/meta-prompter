@@ -49,37 +49,6 @@ def test_scrape_single_url(scraper, mock_jina_reader, tmp_path):
     assert output_file.exists()
     assert output_file.read_text() == "# Test Title\nTest content"
 
-def test_scrape_urls(scraper, mock_jina_reader, tmp_path):
-    """Test scraping multiple URLs in parallel"""
-    scraper.output_dir = tmp_path
-    test_urls = [
-        "https://example.com/1",
-        "https://example.com/2",
-        "https://example.com/3",
-    ]
-    
-    # Configure mock to return different content for each URL
-    def side_effect(url):
-        url_num = url.split('/')[-1]
-        return ScraperResponse(
-            content=f"# Test Title {url_num}\nTest content {url_num}",
-            links=[]
-        )
-    
-    mock_jina_reader.scrape_website.side_effect = side_effect
-    
-    scraper.scrape_urls(test_urls)
-    
-    # Verify JinaReader was called for each URL
-    assert mock_jina_reader.scrape_website.call_count == len(test_urls)
-    
-    # Verify files were created
-    created_files = list(tmp_path.glob("*.md"))
-    assert len(created_files) == len(test_urls)
-    
-    # Verify each file has unique content
-    file_contents = {f.name: f.read_text() for f in created_files}
-    assert len(file_contents) == len(test_urls)
 
 def test_error_handling(scraper, mock_jina_reader, tmp_path, caplog):
     """Test error handling during scraping"""

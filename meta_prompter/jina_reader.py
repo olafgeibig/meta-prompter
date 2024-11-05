@@ -38,5 +38,5 @@ class JinaReader:
 
         return ScraperResponse(
             content=content,
-            links=list(links.values()) if isinstance(links, dict) else []
+            links=list(links.keys()) if isinstance(links, dict) else []
         )

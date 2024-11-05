@@ -47,7 +47,8 @@ class ScrapingJob(BaseModel):
         super().__init__(**data)
         # Initialize depth tracking for seed URLs
         for url in self.seed_urls:
-            self.url_depths[str(url)] = 0
+            url_str = str(url).rstrip('/')
+            self.url_depths[url_str] = 0
 
     def add_urls(self, urls: List[str], source_url: str) -> List[str]:
         """
