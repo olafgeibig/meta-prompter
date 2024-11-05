@@ -61,7 +61,7 @@ class ParallelScraper:
             
             # Process discovered links
             if job.follow_links and response.links:
-                added_urls = job.add_urls(response.links)
+                added_urls = job.add_urls(response.links, url)
                 if added_urls:
                     logging.info(f"Added {len(added_urls)} new URLs to scrape")
             

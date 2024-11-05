@@ -40,13 +40,29 @@ class ScrapingJob(BaseModel):
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
     max_pages: Optional[int] = Field(default=None, description="Maximum number of pages to scrape (None for unlimited)")
+    max_depth: Optional[int] = Field(default=None, description="Maximum link depth from seed URLs (None for unlimited)")
+    url_depths: Dict[str, int] = Field(default_factory=dict, exclude=True)
 
-    def add_urls(self, urls: List[str]) -> List[str]:
+    def __init__(self, **data):
+        super().__init__(**data)
+        # Initialize depth tracking for seed URLs
+        for url in self.seed_urls:
+            self.url_depths[str(url)] = 0
+
+    def add_urls(self, urls: List[str], source_url: str) -> List[str]:
         """
         Add multiple URLs to the job if they meet criteria
         Returns list of URLs that were actually added
         """
         added_urls = []
+        source_depth = self.url_depths.get(source_url, 0)
+        new_depth = source_depth + 1
+
+        # Check max depth before processing URLs
+        if self.max_depth is not None and new_depth > self.max_depth:
+            logging.info(f"Maximum depth ({self.max_depth}) reached for URLs from {source_url}")
+            return added_urls
+
         for url in urls:
             if self.max_pages and len(self.pages) >= self.max_pages:
                 logging.info(f"Maximum pages limit ({self.max_pages}) reached")
@@ -54,6 +70,7 @@ class ScrapingJob(BaseModel):
 
             if not self.is_url_scraped(url) and self.should_scrape_url(url):
                 self.pages.add(Page(url=str(url)))
+                self.url_depths[str(url)] = new_depth
                 added_urls.append(url)
         
         return added_urls
@@ -97,9 +114,11 @@ class ScrapingJob(BaseModel):
 
     def get_statistics(self) -> dict:
         """Get current job statistics"""
+        max_depth_reached = max(self.url_depths.values()) if self.url_depths else 0
         return {
             "total_pages_discovered": len(self.pages),
             "pages_scraped": len([p for p in self.pages if p.done]),
             "pages_pending": len(self.get_pending_urls()),
+            "max_depth_reached": max_depth_reached,
             "running_time": (datetime.now() - self.created_at).total_seconds()
         }
