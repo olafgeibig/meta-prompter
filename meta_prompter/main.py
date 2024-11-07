@@ -21,7 +21,7 @@ def main():
 
     try:
         # Perform scraping
-        scraper.run_spider(job)
+        scraper.run(job)
         logging.info("Scraping completed successfully")
     except Exception as e:
         logging.error(f"Scraping failed: {str(e)}")

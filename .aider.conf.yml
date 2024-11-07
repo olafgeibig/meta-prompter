@@ -16,4 +16,4 @@ architect: true
 editor-model: claude-3-5-sonnet-20241022
 # editor-edit-format: diff
 
-read: [specs/CONVENTIONS.md, specs/project.md, specs/mvp.md]
+read: [specs/CONVENTIONS.md, specs/project.md]
