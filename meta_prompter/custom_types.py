@@ -3,10 +3,19 @@ from datetime import datetime
 from pydantic import BaseModel, Field, HttpUrl
 import logging
 
+class Project(BaseModel):
+    name: str = Field(..., description="Name of the project")
+    description: str = Field(..., description="Description of the project.")
+    created: datetime = Field(default_factory=datetime.now)
+    project_dir: str
+
 class Page(BaseModel):
+    id: int
+    project_name: str
     url: str
     done: bool = False
-    scraped_at: Optional[datetime] = None
+    filename: str
+    content_hash: str
 
     def __hash__(self):
         return hash(self.url)
@@ -26,21 +35,21 @@ class Page(BaseModel):
             return str(v)
         return v
 
-class ScraperResponse(BaseModel):
+class ScrapeResponse(BaseModel):
     content: str = Field(..., description="The main textual content extracted from the page.")
     links: Optional[List[str]] = Field(default_factory=list, description="List of URLs extracted from the page, if available.")
     images: Optional[List[str]] = Field(default_factory=list, description="List of image URLs extracted from the page, if available.")
 
-class ScrapingJob(BaseModel):
+class ScrapeJob(BaseModel):
     name: str = Field(..., description="Name of the scraping job")
     seed_urls: List[HttpUrl] = Field(..., description="Initial URLs to start scraping from")
-    pages: Set[Page] = Field(default_factory=set, description="All pages discovered and their status")
     follow_links: bool = Field(default=True, description="Whether to follow links found in pages")
-    domain_restricted: bool = Field(default=True, description="Whether to restrict scraping to the same domain as seed URLs")
-    created_at: datetime = Field(default_factory=datetime.now)
-    updated_at: datetime = Field(default_factory=datetime.now)
+    restrict_domain: bool = Field(default=True, description="Whether to restrict scraping to the same domain as seed URLs")
+    restrict_path: bool = Field(default=True, description="Whether to restrict scraping to the same path and below")
     max_pages: Optional[int] = Field(default=None, description="Maximum number of pages to scrape (None for unlimited)")
     max_depth: Optional[int] = Field(default=None, description="Maximum link depth from seed URLs (None for unlimited)")
+    exclusion_patterns: Optional[List[str]] = Field(default_factory=list, description="URLs matching these patterns will be skipped") 
+    pages: Set[Page] = Field(default_factory=set, description="All pages discovered and their status")
     url_depths: Dict[str, int] = Field(default_factory=dict, exclude=True)
 
     def __init__(self, **data):
@@ -123,3 +132,8 @@ class ScrapingJob(BaseModel):
             "max_depth_reached": max_depth_reached,
             "running_time": (datetime.now() - self.created_at).total_seconds()
         }
+
+class MetaPrompt(BaseModel):
+    name: str
+    description: str
+    prompt: str

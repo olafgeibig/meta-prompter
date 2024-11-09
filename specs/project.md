@@ -23,12 +23,14 @@ name: "langchain-tools"
 description: "LangChain documentation for tool development"
 created: "2024-11-07"
 scrape_job:
-  seed_url: "https://python.langchain.com/docs/modules/agents/tools/"
-  max_pages: 100
+  seed_urls:
+    - "https://python.langchain.com/docs/modules/agents/tools/"
   spider_options:
-    depth: 3                          # How deep to crawl from seed URL
+    follow_links:                     # Whether to follow links found in pages
     restrict_domain: true             # Restrict to domain of seed URL
     restrict_path: true               # Restrict to path of seed URL
+    max_depth: 3                      # How deep to crawl from seed URL
+    max_pages: 100                    # maximum page count
     exclusion_patterns:               # URLs matching these patterns will be skipped
       - "*/api/*"
       - "*/changelog/*"
@@ -66,10 +68,12 @@ skinparam class {
 class Project {
     +String name
     +String description
+    +Datetime created
+    +String path
 }
 
 class ScrapeJob {
-    +String seed_url
+    +List<String> seed_urls
     +Integer max_pages
     +SpiderOptions spider_options
 }
