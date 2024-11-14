@@ -56,10 +56,19 @@ class ParallelScraper:
             logging.info(f"Discovered {len(response.links)} URLs in the page {url}")
             logging.info(f"Successfully scraped {url} to {output_path}")
             
-            # Mark the page as done in the job
-            job.mark_page_done(url)
+            # Create Page object with required fields
+            page = Page(
+                id=len(job.pages) + 1,  # Simple ID generation
+                project_name=job.name,
+                url=url,
+                filename=filename,
+                content_hash=str(hash(response.content))  # Simple hash for now
+            )
             
-            # Process discovered links
+            # Add page to job's pages set
+            job.pages.add(page)
+            
+            # Process discovered links if enabled
             if job.follow_links and response.links:
                 added_urls = job.add_urls(response.links, url)
                 if added_urls:

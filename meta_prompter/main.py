@@ -15,8 +15,15 @@ def main():
 
     job = ScrapeJob(
         name="crewAI",
-        seed_urls = ["https://docs.crewai.com/concepts/agents"],
-        max_pages=5
+        seed_urls=["https://docs.crewai.com/concepts/agents"],
+        follow_links=True,
+        domain_restricted=True,
+        path_restricted=True,
+        max_pages=5,
+        max_depth=None,
+        exclusion_patterns=[],
+        pages=set(),
+        url_depths={}
     )
 
     try:
