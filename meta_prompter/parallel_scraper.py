@@ -7,7 +7,7 @@ import logging
 from datetime import datetime
 from pydantic import HttpUrl
 from meta_prompter.jina_reader import JinaReader
-from meta_prompter.custom_types import ScrapeJob
+from meta_prompter.custom_types import ScrapeJob, Page
 
 logging.basicConfig(
     level=logging.INFO,
