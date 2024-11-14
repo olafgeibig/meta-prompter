@@ -3,7 +3,7 @@ import requests
 from dotenv import load_dotenv
 from pathlib import Path
 from typing import Dict, Any
-from .custom_types import ScraperResponse
+from .custom_types import ScrapeResponse
 
 class JinaReader:
     def __init__(self):
@@ -13,7 +13,7 @@ class JinaReader:
             raise ValueError("JINA_API_KEY not found in .env file")
         self.base_url = "https://r.jina.ai/"
 
-    def scrape_website(self, url: str) -> ScraperResponse:
+    def scrape_website(self, url: str) -> ScrapeResponse:
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
@@ -36,7 +36,7 @@ class JinaReader:
         content = data.get("content", "")
         links = data.get("links", {})
 
-        return ScraperResponse(
+        return ScrapeResponse(
             content=content,
             links=list(links.keys()) if isinstance(links, dict) else []
         )
