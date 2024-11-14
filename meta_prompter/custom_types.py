@@ -10,12 +10,11 @@ class Project(BaseModel):
     project_dir: str
 
 class Page(BaseModel):
-    id: int
-    project_name: str
-    url: str
-    done: bool = False
-    filename: str
-    content_hash: str
+    id: int = Field(..., description="Unique identifier for the page")
+    project_id: str = Field(..., description="ID of the project this page belongs to")
+    url: str = Field(..., description="Original URL where the page content was scraped from")
+    filename: Optional[str] = Field(None, description="Local filename where the page content is stored")
+    content_hash: Optional[str] = Field(None, description="Hash of the page content for change detection")
 
     def __hash__(self):
         return hash(self.url)
