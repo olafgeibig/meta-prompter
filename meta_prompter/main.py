@@ -1,6 +1,6 @@
 from meta_prompter.parallel_scraper import ParallelScraper
 import logging
-from meta_prompter.custom_types import ScrapingJob
+from meta_prompter.custom_types import ScrapeJob
 
 
 def main():
@@ -13,7 +13,7 @@ def main():
     # Create scraper instance
     scraper = ParallelScraper()
 
-    job = ScrapingJob(
+    job = ScrapeJob(
         name="crewAI",
         seed_urls = ["https://docs.crewai.com/concepts/agents"],
         max_pages=5

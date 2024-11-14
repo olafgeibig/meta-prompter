@@ -7,7 +7,7 @@ import logging
 from datetime import datetime
 from pydantic import HttpUrl
 from meta_prompter.jina_reader import JinaReader
-from meta_prompter.custom_types import ScrapingJob
+from meta_prompter.custom_types import ScrapeJob
 
 logging.basicConfig(
     level=logging.INFO,
@@ -31,7 +31,7 @@ class ParallelScraper:
         sanitized = sanitized.replace(' ', '_')
         return f"{sanitized}.md"
 
-    def _scrape_single_url(self, url: str, job: ScrapingJob) -> None:
+    def _scrape_single_url(self, url: str, job: ScrapeJob) -> None:
         """Scrape a single URL and add discovered links to job."""
         try:
             # Double-check if the URL has already been scraped
@@ -69,7 +69,7 @@ class ParallelScraper:
             logging.error(f"Error scraping {url}: {str(e)}")
             return []
 
-    def run_spider(self, job: ScrapingJob) -> None:
+    def run(self, job: ScrapeJob) -> None:
         """Run spider starting from seed URLs."""
         start_time = datetime.now()
         
