@@ -58,6 +58,16 @@ class ScrapeJob(BaseModel):
         for url in self.seed_urls:
             url_str = str(url).rstrip('/')
             self.url_depths[url_str] = 0
+            # Create initial Page objects for seed URLs
+            page = Page(
+                id=len(self.pages) + 1,
+                project_name=self.name,
+                url=url_str,
+                filename=f"page_{len(self.pages) + 1}.md",  # Temporary filename
+                content_hash="pending",  # Temporary hash until content is scraped
+                done=False
+            )
+            self.pages.add(page)
 
     def add_urls(self, urls: List[str], source_url: str) -> List[str]:
         """
