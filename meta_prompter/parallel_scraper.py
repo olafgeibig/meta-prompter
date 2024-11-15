@@ -8,6 +8,7 @@ from datetime import datetime
 from pydantic import HttpUrl
 from meta_prompter.jina_reader import JinaReader
 from meta_prompter.custom_types import ScrapeJob, Page
+import traceback
 
 logging.basicConfig(
     level=logging.INFO,
@@ -58,8 +59,7 @@ class ParallelScraper:
             
             # Create Page object with required fields
             page = Page(
-                id=len(job.pages) + 1,  # Simple ID generation
-                project_name=job.name,
+                project_id=job.name,
                 url=url,
                 filename=filename,
                 content_hash=str(hash(response.content))  # Simple hash for now
@@ -76,6 +76,7 @@ class ParallelScraper:
             
         except Exception as e:
             logging.error(f"Error scraping {url}: {str(e)}")
+            logging.error(traceback.format_exc())
             return []
 
     def run(self, job: ScrapeJob) -> None:

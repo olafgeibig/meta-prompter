@@ -1,7 +1,7 @@
 from meta_prompter.parallel_scraper import ParallelScraper
 import logging
 from meta_prompter.custom_types import ScrapeJob
-
+import traceback
 
 def main():
     # Configure logging
@@ -32,6 +32,7 @@ def main():
         logging.info("Scraping completed successfully")
     except Exception as e:
         logging.error(f"Scraping failed: {str(e)}")
+        logging.error(traceback.format_exc())
 
 if __name__ == "__main__":
     main()

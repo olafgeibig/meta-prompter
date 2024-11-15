@@ -38,6 +38,6 @@ class JinaReader:
 
         return ScrapeResponse(
             content=content,
-            links=list(links.keys()) if isinstance(links, dict) else [],
+            links=list(links.values()) if isinstance(links, dict) else [],
             images=[]  # Add empty images list to match updated model
         )

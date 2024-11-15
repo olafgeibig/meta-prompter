@@ -10,11 +10,11 @@ class Project(BaseModel):
     project_dir: str
 
 class Page(BaseModel):
-    id: int = Field(..., description="Unique identifier for the page")
     project_id: str = Field(..., description="ID of the project this page belongs to")
     url: str = Field(..., description="Original URL where the page content was scraped from")
     filename: Optional[str] = Field(None, description="Local filename where the page content is stored")
     content_hash: Optional[str] = Field(None, description="Hash of the page content for change detection")
+    done: bool = Field(False, description="Flag indicating if the page has been processed")
 
     def __hash__(self):
         return hash(self.url)
@@ -59,12 +59,8 @@ class ScrapeJob(BaseModel):
             self.url_depths[url_str] = 0
             # Create initial Page objects for seed URLs
             page = Page(
-                id=len(self.pages) + 1,
-                project_name=self.name,
+                project_id=self.name,
                 url=url_str,
-                filename=f"page_{len(self.pages) + 1}.md",  # Temporary filename
-                content_hash="pending",  # Temporary hash until content is scraped
-                done=False
             )
             self.pages.add(page)
 
@@ -88,7 +84,7 @@ class ScrapeJob(BaseModel):
                 break
 
             if not self.is_url_scraped(url) and self.should_scrape_url(url):
-                self.pages.add(Page(url=str(url)))
+                self.pages.add(Page(url=str(url), project_id=self.name))
                 self.url_depths[str(url)] = new_depth
                 added_urls.append(url)
         
@@ -139,7 +135,6 @@ class ScrapeJob(BaseModel):
             "pages_scraped": len([p for p in self.pages if p.done]),
             "pages_pending": len(self.get_pending_urls()),
             "max_depth_reached": max_depth_reached,
-            "running_time": (datetime.now() - self.created_at).total_seconds()
         }
 
 class MetaPrompt(BaseModel):
