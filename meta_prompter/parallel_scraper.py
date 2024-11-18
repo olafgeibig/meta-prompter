@@ -54,7 +54,29 @@ class ParallelScraper:
             output_path = self.output_dir / filename
             
             output_path.write_text(response.content)
-            logging.info(f"Discovered {len(response.links)} URLs in the page {url}")
+            
+            # Process discovered links if enabled
+            if job.follow_links and response.links:
+                # Convert relative URLs to absolute using the current page's URL as base
+                base_url = url.split('#')[0].rstrip('/')  # Remove fragment and trailing slash
+                absolute_urls = []
+                for link in response.links:
+                    if link.startswith('/'):
+                        # Handle absolute paths
+                        parsed_base = HttpUrl(base_url)
+                        absolute_urls.append(f"{parsed_base.scheme}://{parsed_base.host}{link}")
+                    elif not (link.startswith('http://') or link.startswith('https://')):
+                        # Handle relative paths
+                        absolute_urls.append(f"{base_url}/{link}")
+                    else:
+                        # Already absolute URL
+                        absolute_urls.append(link)
+                
+                added_urls = job.add_urls(absolute_urls, url)
+                logging.info(f"Discovered {len(response.links)} URLs in the page {url}")
+                if added_urls:
+                    logging.info(f"Added {len(added_urls)} new URLs to scrape")
+            
             logging.info(f"Successfully scraped {url} to {output_path}")
             
             # Create Page object with required fields
@@ -68,11 +90,8 @@ class ParallelScraper:
             # Add page to job's pages set
             job.pages.add(page)
             
-            # Process discovered links if enabled
-            if job.follow_links and response.links:
-                added_urls = job.add_urls(response.links, url)
-                if added_urls:
-                    logging.info(f"Added {len(added_urls)} new URLs to scrape")
+            # Mark the page as done after successful scraping
+            job.mark_page_done(url)
             
         except Exception as e:
             logging.error(f"Error scraping {url}: {str(e)}")
@@ -99,28 +118,29 @@ class ParallelScraper:
                 # Submit batch of URLs for scraping
                 futures = [
                     executor.submit(self._scrape_single_url, url, job)
-                    for url in processing_urls
+                    for url in pending_urls[:self.max_scrapers]
                 ]
-
+                
                 # Wait for all futures to complete
                 for future in futures:
-                    try:
-                        future.result()
-                    except Exception as e:
-                        logging.error(f"Task failed with error: {str(e)}")
-
+                    future.result()
+                
                 # Log progress
                 stats = job.get_statistics()
-                logging.info(f"Progress: {stats['pages_scraped']}/{stats['total_pages_discovered']} pages scraped")
+                logging.info(f"Progress: {stats['unique_pages_scraped']}/{stats['total_unique_pages']} unique pages scraped")
+                logging.info(f"Current depth: {stats['max_depth_reached']}")
 
         # Log final statistics
         end_time = datetime.now()
         duration = (end_time - start_time).total_seconds()
         stats = job.get_statistics()
+        
+        logging.info("Scraping completed!")
+        logging.info(f"Statistics:")
         logging.info(f"""
-        Scraping job completed:
-        - Total pages discovered: {stats['total_pages_discovered']}
-        - Pages scraped: {stats['pages_scraped']}
-        - Pages pending: {stats['pages_pending']}
-        - Total time: {duration:.2f} seconds
+            - Duration: {duration:.2f} seconds
+            - Total unique pages discovered: {stats['total_unique_pages']}
+            - Unique pages scraped: {stats['unique_pages_scraped']}
+            - Pages pending: {stats['pages_pending']}
+            - Maximum depth reached: {stats['max_depth_reached']}
         """)
