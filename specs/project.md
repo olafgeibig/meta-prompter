@@ -2,7 +2,37 @@
 Software Requirements Specification
 
 ## 1. Overview
-MetaPrompter is a Python-based tool that helps developers create focused documentation context (meta-prompts) for AI coding assistants. It manages the workflow of scraping documentation, cleaning it, tracking changes, and generating context-specific documentation extracts.
+MetaPrompter is a Python-based tool that helps developers create focused documentation context (meta-prompts) for AI coding assistants. It manages the workflow of scraping documentation, cleaning it, tracking changes, and generating context-specific documentation extracts. The system uses Jina Reader API to standardize HTML content conversion to markdown, ensuring consistent formatting across different documentation sources.
+
+### 1.1 Documentation Collection
+The system scrapes documentation websites from the internet, starting from specified seed URLs. It intelligently traverses documentation structures while respecting domain and path restrictions to collect relevant pages. Using the Jina Reader API, it converts HTML-based documentation into standardized markdown format, preserving code examples and essential formatting while removing navigation elements and other web-specific artifacts. This ensures a consistent base format regardless of the original documentation's presentation style.
+
+### 1.2 Content Processing
+After collection, the raw markdown content undergoes a cleaning process using LLM-based transformations. This process:
+- Standardizes formatting and structure across different documentation sources
+- Removes redundant or navigational content
+- Preserves and properly formats code examples and technical content
+- Maintains semantic relationships between different sections
+- Tracks content changes to avoid reprocessing unchanged documentation
+The cleaned content serves as the foundation for generating focused meta-prompts.
+
+### 1.3 Meta-Prompt Generation
+Meta-prompts are context-specific documentation extracts tailored for specific development tasks. The generation process:
+- Takes a task-specific prompt template as input
+- Analyzes the cleaned documentation to identify relevant sections
+- Extracts and reorganizes content to match the task context
+- Maintains links between related concepts and examples
+- Creates focused, self-contained documentation suitable for AI coding assistants
+The resulting meta-prompts provide precise, relevant context for specific development tasks while maintaining technical accuracy.
+
+### 1.4 Cost Management
+The system implements token-aware operations to manage LLM usage costs effectively:
+- Counts tokens before executing LLM operations
+- Provides cost estimates before processing stages
+- Prompts user confirmation for operations exceeding configured thresholds
+- Tracks token usage across different processing stages
+- Enables users to monitor and control processing costs
+This ensures transparency and control over LLM-related expenses while maintaining processing quality.
 
 ## 2. Core Requirements
 
@@ -22,6 +52,9 @@ MetaPrompter is a Python-based tool that helps developers create focused documen
 name: "langchain-tools"
 description: "LangChain documentation for tool development"
 created: "2024-11-07"
+cost_control:
+  token_counting: true               # Enable token counting before LLM operations
+  prompt_threshold: 1000             # Prompt user if operation exceeds this token count
 scrape_job:
   seed_urls:
     - "https://python.langchain.com/docs/modules/agents/tools/"
@@ -35,6 +68,8 @@ scrape_job:
       - "*/api/*"
       - "*/changelog/*"
       - "*/legacy/*"
+  content_conversion:
+    use_jina_reader: true            # Use Jina Reader API for HTML to markdown conversion
 
 cleaning:
   prompt: |
@@ -193,12 +228,15 @@ skinparam sequence {
 participant "CLI" as CLI
 participant "Project Manager" as PM
 participant "Scraper" as SC
+participant "Jina Reader" as JR
 participant "Source Tracker" as ST
 database "SQLite" as DB
 database "Files" as FS
 
 CLI -> PM: Run scrape
 PM -> SC: Configure spider
+SC -> JR: Convert HTML to markdown
+JR -> SC: Return standardized content
 SC -> FS: Write to scraped/
 SC -> ST: Update content hashes
 ST -> DB: Update page records
@@ -267,11 +305,12 @@ generator --> llm
 
 ### 4.1 Commands
 ```bash
-metaprompter init <name>      # Create new project
+metaprompter init <n>      # Create new project
 metaprompter scrape           # Run scrape job
 metaprompter status          # Show file status
 metaprompter clean           # Run cleaning job
-metaprompter generate <name> # Generate meta-prompt
+metaprompter generate <n> # Generate meta-prompt
+metaprompter tokens          # Show token count for next operation
 ```
 
 ### 4.2 Command Flow
@@ -307,6 +346,7 @@ note right of processing : Content processing phase
 ## 5. Error Handling
 - Basic error logging to file
 - Clear error messages for user
+- Token count warnings and prompts
 - Graceful handling of:
   - Network errors during scraping
   - LLM API errors
@@ -324,10 +364,7 @@ note right of processing : Content processing phase
 - Template system for cleaning prompts
 - Multiple framework versions
 - Direct AI assistant integration
-
-Would you like me to:
-1. Add more detailed workflow diagrams?
-2. Expand any section further?
-3. Add more implementation details?
-4. Include additional error scenarios?
-5. Detail specific components further?
+- Alternative HTML to markdown converters as fallback options
+- Quality validation system for LLM outputs
+- Automated meta-prompt effectiveness scoring
+- Content accuracy verification tools
