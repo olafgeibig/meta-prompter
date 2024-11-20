@@ -1,0 +1,19 @@
+name: "langchain-tools"
+description: "LangChain documentation for tool development"
+created: "2024-11-19T00:00:00"
+cost_control:
+  token_counting: true
+  prompt_threshold: 1000
+scrape_job:
+  seed_urls:
+    - "https://python.langchain.com/docs/modules/agents/tools/"
+  max_pages: 100
+  spider_options:
+    follow_links: true
+    restrict_domain: true
+    restrict_path: true
+    max_depth: 3
+    exclusion_patterns:
+      - "*/api/*"
+      - "*/changelog/*"
+      - "*/legacy/*"

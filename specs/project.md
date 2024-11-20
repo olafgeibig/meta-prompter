@@ -110,39 +110,39 @@ class Project {
 class ScrapeJob {
     +List<String> seed_urls
     +Integer max_pages
+    +Integer max_depth
     +SpiderOptions spider_options
 }
 
-class SpiderOptions {
-    +Integer depth
-    +Boolean restrict_domain
-    +Boolean restrict_path
-    +List<String> exclusion_patterns
+class ThreadSafeJobState {
+    +Set<Page> pages
+    +Dict<String, int> url_depths
+    +Set<String> pending_urls
 }
 
-class CleaningConfig {
-    +String prompt
+class BaseScraper {
+    +Integer max_workers
+    +Path output_dir
 }
 
-class MetaPrompt {
-    +String name
-    +String description
-    +String prompt
+class ParallelScraper {
+    +scrape(config: ScrapeJobConfig)
+    +_scrape_url(url: String, job_state: ThreadSafeJobState)
 }
 
 class Page {
-    +Integer id
     +String project_id
     +String url
+    +Boolean done
     +String filename
     +String content_hash
 }
 
 Project "1" -- "1" ScrapeJob : configures >
-ScrapeJob "1" -- "1" SpiderOptions : contains >
-Project "1" -- "1" CleaningConfig : configures >
-Project "1" -- "n" MetaPrompt : contains >
-Project "1" -- "n" Page : tracks >
+ScrapeJob "1" -- "1" ThreadSafeJobState : manages >
+BaseScraper <|-- ParallelScraper : extends
+ParallelScraper "1" -- "1" ThreadSafeJobState : uses >
+ThreadSafeJobState "1" -- "n" Page : tracks >
 @enduml
 ```
 
@@ -202,7 +202,7 @@ skinparam state {
 [*] --> Scraping
 Scraping : Fetch documentation
 Scraping : Convert to markdown
-Scraping : Track content hashes
+Scraping : Track sources
 
 Scraping --> Cleaning : New/changed content
 Cleaning : LLM-based cleaning
@@ -234,11 +234,11 @@ database "SQLite" as DB
 database "Files" as FS
 
 CLI -> PM: Run scrape
-PM -> SC: Configure spider
-SC -> JR: Convert HTML to markdown
-JR -> SC: Return standardized content
+PM -> SC: Configure scraper
+SC -> JR: Scrape pages
+JR -> SC: Return markdown
 SC -> FS: Write to scraped/
-SC -> ST: Update content hashes
+SC -> ST: Update source tracker
 ST -> DB: Update page records
 PM -> CLI: Report completion
 @enduml
@@ -305,12 +305,13 @@ generator --> llm
 
 ### 4.1 Commands
 ```bash
-metaprompter init <n>      # Create new project
-metaprompter scrape           # Run scrape job
-metaprompter status          # Show file status
-metaprompter clean           # Run cleaning job
-metaprompter generate <n> # Generate meta-prompt
-metaprompter tokens          # Show token count for next operation
+mp init <project>       # Create new project with default config
+mp status <project>     # Display project status and validate project configuration
+mp scrape <project>     # Run scrape job
+mp clean <project>      # Run cleaning job
+mp stage <project>      # Stage documents for generation
+mp create <project> <job>  # Create new generation job
+mp generate <project> <job>  # Run generation job
 ```
 
 ### 4.2 Command Flow
@@ -325,21 +326,36 @@ skinparam state {
 
 [*] --> Init
 Init : Create project.yaml
-Init : Initialize database
 
 state "Project Setup" as setup {
-    Init --> Scrape
+    Init --> Status : Edit config
+    Status --> Status : Invalid config
+}
+
+state "Content Collection" as collection {
+    Status --> Scrape : Valid config
+    Scrape --> Scrape : Test run
 }
 
 state "Content Processing" as processing {
-    Scrape --> Clean : Changed content
-    Clean --> Generate : Clean content
+    Scrape --> Clean : Scrape complete
+    Clean --> Clean : Test run
+    Clean --> Stage : Clean complete
+    Scrape --> Stage : Skip cleaning
+}
+
+state "Generation" as generation {
+    Stage --> Create : Add job
+    Create --> Generate : Configure job
+    Generate --> Generate : Refine prompt
 }
 
 Generate --> [*]
 
-note right of setup : Project initialization phase
+note right of setup : Project configuration phase
+note right of collection : Initial testing phase
 note right of processing : Content processing phase
+note right of generation : Content generation phase
 @enduml
 ```
 
