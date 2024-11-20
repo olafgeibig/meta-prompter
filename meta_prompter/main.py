@@ -1,8 +1,9 @@
 from pathlib import Path
 import click
 import sys
+from typing import Optional
 
-from meta_prompter.core.project import Project
+from meta_prompter.core.project import Project, GenerationJobConfig
 from meta_prompter.scrapers.parallel import ParallelScraper
 from meta_prompter.utils.logging import setup_logging
 
@@ -34,60 +35,99 @@ def cli(ctx):
         click.echo(ctx.get_help())
         ctx.exit()
 
+def create_project_structure(project_name: str) -> Path:
+    """Create project directory structure."""
+    project_dir = Path(project_name)
+    
+    # Create project directory
+    if project_dir.exists():
+        click.echo(f"Error: Directory {project_name} already exists", err=True)
+        sys.exit(1)
+    
+    # Create directory structure
+    directories = [
+        "scraped",
+        "cleaned",
+        "staged",
+        "meta_prompts"
+    ]
+    
+    project_dir.mkdir()
+    for dir_name in directories:
+        (project_dir / dir_name).mkdir()
+        
+    # Create empty database
+    (project_dir / "project.db").touch()
+    
+    return project_dir
+
 @cli.command()
 @click.argument('project')
 def init(project: str):
     """Create a new project with default configuration."""
-    project_path = get_project_path(project)
-    if project_path.exists():
-        click.echo(f"Error: Project {project} already exists", err=True)
-        sys.exit(1)
-        
+    # Create project directory structure
+    project_dir = create_project_structure(project)
+    project_path = project_dir / "project.yaml"
+    
     # Create default project
-    project = Project(
+    project_config = Project(
         name=project,
         description="New MetaPrompter project",
+        path=project_dir,
         scrape_job={
             "seed_urls": [],
-            "max_pages": 10,
-            "output_dir": "scrape_output"
+            "max_pages": 5,
+            "spider_options": {
+                "follow_links": True,
+                "restrict_domain": True,
+                "restrict_path": True,
+                "max_depth": 5,
+                "exclusion_patterns": []
+            }
         },
         cleaning={
-            "prompt": "Clean and format the following content: {content}",
+            "prompt": "Clean and format the following content. Remove any navigation elements or other web-specific artifacts. Ensure the content is formatted consistently across different documentation sources.",
             "max_docs": 5,
-            "output_dir": "clean_output"
+            "model": "gemini/gemini-1.5-flash",
+            "max_tokens": 128000,
+            "temperature": 0.1
         }
     )
     
     # Save project file
-    project.to_yaml(project_path)
-    click.echo(f"Created new project: {project_path}")
-    click.echo("Edit the project file to configure your workflow")
+    project_config.to_yaml(project_path)
+    click.echo(f"Created new project: {project_dir}")
+    click.echo("\nEdit project.yaml to configure your workflow")
 
 @cli.command()
 @click.argument('project', type=ProjectPath())
 def status(project: Project):
-    """Display project status and validate configuration."""
+    """Show project status and configuration."""
     click.echo(f"Project: {project.name}")
     click.echo(f"Description: {project.description}")
-    click.echo("\nValidating configuration...")
+    click.echo(f"Created: {project.created}")
+    click.echo("\nConfiguration:")
+    click.echo("  Scraping:")
+    click.echo(f"    Max Pages: {project.scrape_job.max_pages}")
+    click.echo(f"    Max Depth: {project.scrape_job.spider_options.max_depth}")
+    if project.scrape_job.seed_urls:
+        click.echo("    Seed URLs:")
+        for url in project.scrape_job.seed_urls:
+            click.echo(f"      - {url}")
     
-    issues = project.validate_status()
-    if issues:
-        click.echo("\nConfiguration issues found:", err=True)
-        for issue in issues:
-            click.echo(f"- {issue}", err=True)
-        sys.exit(1)
-    else:
-        click.echo("Configuration is valid")
-        
-    # Show phase status
-    click.echo("\nPhase Status:")
-    click.echo(f"Current Phase: {project.status.current_phase}")
-    click.echo(f"Scraping: {'Complete' if project.status.scrape_complete else 'Pending'}")
-    click.echo(f"Cleaning: {'Complete' if project.status.clean_complete else 'Pending'}")
-    if project.status.staged_docs:
-        click.echo(f"Staged Documents: {len(project.status.staged_docs)}")
+    click.echo("\n  Cleaning:")
+    click.echo(f"    Max Docs: {project.cleaning.max_docs}")
+    click.echo(f"    Model: {project.cleaning.model}")
+    click.echo(f"    Max Tokens: {project.cleaning.max_tokens}")
+    click.echo(f"    Temperature: {project.cleaning.temperature}")
+    
+    if project.generation_jobs:
+        click.echo("\n  Generation Jobs:")
+        for name, job in project.generation_jobs.items():
+            click.echo(f"    {name}:")
+            click.echo(f"      Model: {job.model}")
+            click.echo(f"      Max Tokens: {job.max_tokens}")
+            click.echo(f"      Temperature: {job.temperature}")
 
 @cli.command()
 @click.argument('project', type=ProjectPath())
@@ -107,7 +147,6 @@ def scrape(project: Project):
     
     try:
         scraper.scrape(project.scrape_job)
-        project.status.scrape_complete = True
         project.to_yaml(get_project_path(project.name))
         click.echo("Scraping completed successfully")
     except Exception as e:
@@ -118,7 +157,7 @@ def scrape(project: Project):
 @click.argument('project', type=ProjectPath())
 def clean(project: Project):
     """Run cleaning job with current configuration."""
-    if not project.status.scrape_complete and not project.cleaning.skip_cleaning:
+    if not project.scrape_job.seed_urls:
         click.echo("Error: Scraping phase not complete", err=True)
         sys.exit(1)
         
@@ -127,42 +166,44 @@ def clean(project: Project):
     # TODO: Implement cleaning logic
     click.echo("Cleaning completed successfully")
     
-    project.status.clean_complete = True
     project.to_yaml(get_project_path(project.name))
 
 @cli.command()
 @click.argument('project', type=ProjectPath())
-def stage(project: Project):
-    """Stage documents for generation phase."""
-    if not project.status.scrape_complete:
-        click.echo("Error: Scraping phase not complete", err=True)
+@click.argument('source', type=click.Choice(['scraped', 'cleaned']))
+def stage(project: Project, source: str):
+    """Stage documents for generation from either scraped or cleaned directory."""
+    try:
+        count, message = project.stage_documents(source)
+        click.echo(message)
+    except ValueError as e:
+        click.echo(f"Error: {str(e)}", err=True)
         sys.exit(1)
-    if not project.status.clean_complete and not project.cleaning.skip_cleaning:
-        click.echo("Error: Cleaning phase not complete", err=True)
-        sys.exit(1)
-        
-    # TODO: Implement staging logic
-    click.echo("Documents staged for generation")
 
 @cli.command()
 @click.argument('project', type=ProjectPath())
 @click.argument('job')
-def create(project: Project, job: str):
-    """Create a new generation job."""
-    if job in project.generation_jobs:
-        click.echo(f"Error: Generation job {job} already exists", err=True)
+@click.option('--prompt', help='Generation prompt template')
+@click.option('--model', help='LiteLLM model identifier')
+@click.option('--max-tokens', type=int, help='Maximum tokens for generation')
+@click.option('--temperature', type=float, help='Temperature for generation')
+def create(project: Project, job: str, prompt: Optional[str] = None, 
+          model: Optional[str] = None, max_tokens: Optional[int] = None,
+          temperature: Optional[float] = None):
+    """Create a new generation job configuration."""
+    try:
+        message = project.add_generation_job(
+            job_name=job,
+            prompt=prompt,
+            model=model,
+            max_tokens=max_tokens,
+            temperature=temperature
+        )
+        project.to_yaml(get_project_path(project.name))
+        click.echo(message)
+    except ValueError as e:
+        click.echo(f"Error: {str(e)}", err=True)
         sys.exit(1)
-        
-    project.generation_jobs[job] = {
-        "prompt": "Generate content based on: {content}",
-        "model": "gpt-4",
-        "max_tokens": 2000,
-        "temperature": 0.7
-    }
-    
-    project.to_yaml(get_project_path(project.name))
-    click.echo(f"Created generation job: {job}")
-    click.echo("Edit the project file to configure the generation prompt")
 
 @cli.command()
 @click.argument('project', type=ProjectPath())
@@ -171,9 +212,6 @@ def generate(project: Project, job: str):
     """Run a generation job."""
     if job not in project.generation_jobs:
         click.echo(f"Error: Generation job {job} not found", err=True)
-        sys.exit(1)
-    if not project.status.staged_docs:
-        click.echo("Error: No documents staged for generation", err=True)
         sys.exit(1)
         
     click.echo(f"Starting generation job: {job}")

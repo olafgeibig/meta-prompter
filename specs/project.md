@@ -183,6 +183,9 @@ project_dir/
 ├── cleaned/              # LLM-cleaned markdown files
 │   ├── page1.md
 │   └── page2.md
+├── staged/               # Staged document files to be used for meta-prompt generation
+│   ├── page1.md
+│   └── page2.md
 └── meta_prompts/         # Generated context files
     └── tool_creation.md
 ```
