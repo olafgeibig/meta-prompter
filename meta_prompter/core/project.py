@@ -66,7 +66,7 @@ class Project(BaseModel):
         """Get the meta-prompts directory path."""
         return self.path / "meta_prompts"
 
-    def stage_documents(self, source: str) -> Tuple[int, str]:
+    def stage_documents(self, source: str) -> int:
         """
         Stage documents from either scraped or cleaned directory.
 
@@ -106,8 +106,7 @@ class Project(BaseModel):
         if moved_count == 0:
             raise ValueError("No markdown files found to stage")
 
-        return moved_count, f"Successfully staged {moved_count} documents from {source} directory"
-
+        return moved_count
     def add_generation_job(self, job_name: str, prompt: Optional[str] = None,
                            model: Optional[str] = None, max_tokens: Optional[int] = None,
                            temperature: Optional[float] = None) -> str:

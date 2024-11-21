@@ -174,8 +174,8 @@ def clean(project: Project):
 def stage(project: Project, source: str):
     """Stage documents for generation from either scraped or cleaned directory."""
     try:
-        count, message = project.stage_documents(source)
-        click.echo(message)
+        count = project.stage_documents(source)
+        click.echo(f"Successfully staged {count} documents from {source} directory")
     except ValueError as e:
         click.echo(f"Error: {str(e)}", err=True)
         sys.exit(1)

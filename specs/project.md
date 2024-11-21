@@ -362,15 +362,13 @@ note right of generation : Content generation phase
 @enduml
 ```
 
-## 5. Error Handling
-- Basic error logging to file
-- Clear error messages for user
-- Token count warnings and prompts
-- Graceful handling of:
-  - Network errors during scraping
-  - LLM API errors
-  - File system errors
-  - Database errors
+## 5. Implementation Hints
+- Use Jina Reader API for HTML to markdown conversion
+- Use SQLite database for project configuration and source tracking
+- Use LiteLLM for LLM operations
+- Use uv for project management, e.g. `uv add <dependency>`
+- Use the local .env python environment
+- Follow the coding guidelines in specs/CONVENTIONS.md
 
 ## 6. Performance Considerations
 - Efficient hash comparison
