@@ -2,8 +2,7 @@ from pathlib import Path
 import click
 import sys
 from typing import Optional
-
-from meta_prompter.core.project import Project, GenerationJobConfig
+from meta_prompter.core.project import Project
 from meta_prompter.scrapers.parallel import ParallelScraper
 from meta_prompter.utils.logging import setup_logging
 
@@ -35,69 +34,17 @@ def cli(ctx):
         click.echo(ctx.get_help())
         ctx.exit()
 
-def create_project_structure(project_name: str) -> Path:
-    """Create project directory structure."""
-    project_dir = Path(project_name)
-    
-    # Create project directory
-    if project_dir.exists():
-        click.echo(f"Error: Directory {project_name} already exists", err=True)
-        sys.exit(1)
-    
-    # Create directory structure
-    directories = [
-        "scraped",
-        "cleaned",
-        "staged",
-        "meta_prompts"
-    ]
-    
-    project_dir.mkdir()
-    for dir_name in directories:
-        (project_dir / dir_name).mkdir()
-        
-    # Create empty database
-    (project_dir / "project.db").touch()
-    
-    return project_dir
-
 @cli.command()
 @click.argument('project')
 def init(project: str):
     """Create a new project with default configuration."""
-    # Create project directory structure
-    project_dir = create_project_structure(project)
-    project_path = project_dir / "project.yaml"
-    
-    # Create default project
-    project_config = Project(
-        name=project,
-        description="New MetaPrompter project",
-        path=project_dir,
-        scrape_job={
-            "seed_urls": [],
-            "max_pages": 5,
-            "spider_options": {
-                "follow_links": True,
-                "restrict_domain": True,
-                "restrict_path": True,
-                "max_depth": 5,
-                "exclusion_patterns": []
-            }
-        },
-        cleaning={
-            "prompt": "Clean and format the following content. Remove any navigation elements or other web-specific artifacts. Ensure the content is formatted consistently across different documentation sources.",
-            "max_docs": 5,
-            "model": "gemini/gemini-1.5-flash",
-            "max_tokens": 128000,
-            "temperature": 0.1
-        }
-    )
-    
-    # Save project file
-    project_config.to_yaml(project_path)
-    click.echo(f"Created new project: {project_dir}")
-    click.echo("\nEdit project.yaml to configure your workflow")
+    try:
+        project_config = Project.create(project)
+        click.echo(f"Created new project: {project_config.path}")
+        click.echo("\nEdit project.yaml to configure your workflow")
+    except ValueError as e:
+        click.echo(f"Error: {str(e)}", err=True)
+        sys.exit(1)
 
 @cli.command()
 @click.argument('project', type=ProjectPath())

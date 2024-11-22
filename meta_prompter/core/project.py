@@ -107,6 +107,7 @@ class Project(BaseModel):
             raise ValueError("No markdown files found to stage")
 
         return moved_count
+
     def add_generation_job(self, job_name: str, prompt: Optional[str] = None,
                            model: Optional[str] = None, max_tokens: Optional[int] = None,
                            temperature: Optional[float] = None) -> str:
@@ -156,3 +157,68 @@ class Project(BaseModel):
         config_dict['created'] = self.created.isoformat()
         with open(yaml_path, 'w') as f:
             yaml.dump(config_dict, f, sort_keys=False, indent=2)
+
+    @classmethod
+    def create(cls, project_name: str) -> 'Project':
+        """Create a new project with default configuration.
+        
+        Args:
+            project_name: Name of the project and directory to create
+            
+        Returns:
+            Project: Newly created project instance
+            
+        Raises:
+            ValueError: If project directory already exists
+        """
+        project_dir = Path(project_name)
+        
+        # Create project directory
+        if project_dir.exists():
+            raise ValueError(f"Directory {project_name} already exists")
+        
+        # Create directory structure
+        directories = [
+            "scraped",
+            "cleaned",
+            "staged",
+            "meta_prompts"
+        ]
+        
+        project_dir.mkdir()
+        for dir_name in directories:
+            (project_dir / dir_name).mkdir()
+            
+        # Create empty database
+        (project_dir / "project.db").touch()
+        
+        project_path = project_dir / "project.yaml"
+        
+        # Create default project
+        project = cls(
+            name=project_name,
+            description="New MetaPrompter project",
+            path=project_dir,
+            scrape_job={
+                "seed_urls": [],
+                "max_pages": 5,
+                "spider_options": {
+                    "follow_links": True,
+                    "restrict_domain": True,
+                    "restrict_path": True,
+                    "max_depth": 5,
+                    "exclusion_patterns": []
+                }
+            },
+            cleaning={
+                "prompt": "Clean and format the following content. Remove any navigation elements or other web-specific artifacts. Ensure the content is formatted consistently across different documentation sources.",
+                "max_docs": 5,
+                "model": "gemini/gemini-1.5-flash",
+                "max_tokens": 128000,
+                "temperature": 0.1
+            }
+        )
+        
+        # Save project file
+        project.to_yaml(project_path)
+        return project
