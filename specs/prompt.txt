@@ -1,3 +1,24 @@
+<instructions>
+1. Fix the following code so the cli supports the following commands:
+```
+mp init <project> <options>      # Create new project with default config
+mp status <project>     # Display project status and validate project configuration
+mp scrape <project>     # Run scrape job
+mp clean <project>      # Run cleaning job
+mp stage <project>      # Stage documents for generation
+mp create <project> <job> <options> # Create new generation job 
+mp generate <project> <job>  # Run generation job
+
+create options
+--prompt # Generation prompt template
+--model # LiteLLM model identifier
+--max-tokens # Maximum tokens for generation
+--temperature # Temperature for generation
+```
+2. Fix the code so it outputs the help screen with all agrgumets and options
+</instructions>
+
+<code>
 from pathlib import Path
 import click
 import sys
@@ -17,18 +38,14 @@ class ProjectPath(click.Path):
         if path is None:
             return None
         try:
-            yaml_path = get_project_path(path)
-            project = Project.from_yaml(yaml_path)
+            project = Project.from_yaml(Path(path))
             return project
         except Exception as e:
             self.fail(f'Failed to load project: {str(e)}', param, ctx)
 
 def get_project_path(project_name: str) -> Path:
     """Get the path to a project's YAML file."""
-    project_dir = Path(project_name)
-    if project_dir.is_dir():
-        return project_dir / "project.yaml"
-    return Path(project_name)  # Fallback for backward compatibility
+    return Path(f"{project_name}.yaml")
 
 @click.group(invoke_without_command=True)
 @click.pass_context
@@ -146,7 +163,7 @@ def scrape(project: Project):
     
     scraper = ParallelScraper(
         max_workers=3,
-        output_dir=project.get_scraped_dir()
+        output_dir=Path(project.scrape_job.output_dir)
     )
     
     try:
@@ -227,3 +244,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+</code>

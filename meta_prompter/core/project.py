@@ -17,9 +17,14 @@ class SpiderOptions(BaseModel):
 
 class ScrapeJobConfig(BaseModel):
     """Scraping job configuration."""
+    name: str = Field(default="default", description="Name of the scraping job")
     seed_urls: List[HttpUrl] = Field(..., description="Starting URLs for scraping")
-    max_pages: int = Field(default=5, description="Maximum number of pages to scrape")
-    spider_options: SpiderOptions = Field(default_factory=SpiderOptions)
+    follow_links: bool = Field(default=True, description="Whether to follow links found in pages")
+    domain_restricted: bool = Field(default=True, description="Whether to restrict scraping to the same domain as seed URLs")
+    path_restricted: bool = Field(default=True, description="Whether to restrict scraping to the same path and below")
+    max_pages: Optional[int] = Field(default=5, description="Maximum number of pages to scrape (None for unlimited)")
+    max_depth: Optional[int] = Field(default=5, description="Maximum link depth from seed URLs (None for unlimited)")
+    exclusion_patterns: List[str] = Field(default_factory=list, description="URLs matching these patterns will be skipped")
 
 class CleaningConfig(BaseModel):
     """Cleaning phase configuration."""
@@ -46,23 +51,19 @@ class Project(BaseModel):
     cleaning: CleaningConfig
     generation_jobs: Dict[str, GenerationJobConfig] = Field(default_factory=dict)
 
-    @property
-    def scraped_dir(self) -> Path:
+    def get_scraped_dir(self) -> Path:
         """Get the scraped content directory path."""
         return self.path / "scraped"
 
-    @property
-    def cleaned_dir(self) -> Path:
+    def get_cleaned_dir(self) -> Path:
         """Get the cleaned content directory path."""
         return self.path / "cleaned"
 
-    @property
-    def staged_dir(self) -> Path:
+    def get_staged_dir(self) -> Path:
         """Get the staged content directory path."""
         return self.path / "staged"
 
-    @property
-    def meta_prompts_dir(self) -> Path:
+    def get_meta_prompts_dir(self) -> Path:
         """Get the meta-prompts directory path."""
         return self.path / "meta_prompts"
 
@@ -79,7 +80,7 @@ class Project(BaseModel):
         Raises:
             ValueError: If source directory doesn't exist or no files found
         """
-        source_dir = self.scraped_dir if source == 'scraped' else self.cleaned_dir
+        source_dir = self.get_scraped_dir() if source == 'scraped' else self.get_cleaned_dir()
 
         if not source_dir.exists():
             raise ValueError(f"Source directory {source_dir} does not exist")
@@ -88,10 +89,10 @@ class Project(BaseModel):
             raise ValueError(f"No documents found in {source_dir}")
 
         # Create staged directory if it doesn't exist
-        self.staged_dir.mkdir(exist_ok=True)
+        self.get_staged_dir().mkdir(exist_ok=True)
 
         # Clear existing staged files
-        for existing in self.staged_dir.iterdir():
+        for existing in self.get_staged_dir().iterdir():
             if existing.is_file():
                 existing.unlink()
 
@@ -99,7 +100,7 @@ class Project(BaseModel):
         moved_count = 0
         for file in source_dir.iterdir():
             if file.is_file() and file.suffix == '.md':
-                target = self.staged_dir / file.name
+                target = self.get_staged_dir() / file.name
                 shutil.copy2(file, target)
                 moved_count += 1
 
@@ -107,6 +108,7 @@ class Project(BaseModel):
             raise ValueError("No markdown files found to stage")
 
         return moved_count
+
     def add_generation_job(self, job_name: str, prompt: Optional[str] = None,
                            model: Optional[str] = None, max_tokens: Optional[int] = None,
                            temperature: Optional[float] = None) -> str:
