@@ -1,0 +1,22 @@
+name: dummy
+description: test project
+created: '2024-11-28T18:42:30.824301'
+scrape_job:
+  name: default
+  seed_urls:
+  - https://docs.crewai.com/introduction
+  follow_links: true
+  domain_restricted: true
+  path_restricted: true
+  max_pages: 3
+  max_depth: 5
+  exclusion_patterns: []
+cleaning:
+  prompt: Clean and format the following content. Remove any navigation elements or
+    other web-specific artifacts. Ensure the content is formatted consistently across
+    different documentation sources.
+  max_docs: 5
+  model: gemini/gemini-1.5-flash
+  max_tokens: 128000
+  temperature: 0.1
+generation_jobs: {}

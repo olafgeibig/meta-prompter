@@ -156,5 +156,7 @@ class Project(BaseModel):
         config_dict = self.model_dump(exclude={'path'})
         # Convert datetime to string for YAML serialization
         config_dict['created'] = self.created.isoformat()
+        # Convert HttpUrl objects to strings
+        config_dict['scrape_job']['seed_urls'] = [str(url) for url in self.scrape_job.seed_urls]
         with open(yaml_path, 'w') as f:
             yaml.dump(config_dict, f, sort_keys=False, indent=2)

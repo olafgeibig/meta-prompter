@@ -1,14 +1,15 @@
 from pathlib import Path
 import click
 import sys
+import logging
 from typing import Optional
 
 from meta_prompter.core.project import Project, GenerationJobConfig
-from meta_prompter.scrapers.parallel import ParallelScraper
+from meta_prompter.scrapers.sequential import SequentialScraper
 from meta_prompter.utils.logging import setup_logging
 
 # Configure logging
-setup_logging(log_file=Path("logs/metaprompter.log"))
+setup_logging(log_level=logging.DEBUG)
 
 class ProjectPath(click.Path):
     """Custom path type that loads and validates project files."""
@@ -144,18 +145,10 @@ def scrape(project: Project):
     click.echo(f"Starting scrape job for {project.name}")
     click.echo(f"Max pages: {project.scrape_job.max_pages}")
     
-    scraper = ParallelScraper(
-        max_workers=3,
-        output_dir=project.get_scraped_dir()
-    )
-    
-    try:
-        scraper.scrape(project.scrape_job)
-        project.to_yaml(get_project_path(project.name))
-        click.echo("Scraping completed successfully")
-    except Exception as e:
-        click.echo(f"Scraping failed: {str(e)}", err=True)
-        sys.exit(1)
+    scraper = SequentialScraper(project)
+    scraper.run()
+    # project.to_yaml(get_project_path(project.name))
+    click.echo("Scraping completed successfully")
 
 @cli.command()
 @click.argument('project', type=ProjectPath())
