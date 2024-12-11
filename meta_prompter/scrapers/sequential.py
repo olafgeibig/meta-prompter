@@ -1,15 +1,13 @@
 from datetime import datetime
 import logging
-from pathlib import Path
 from typing import Optional, Set, Dict, List
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urlparse
 from meta_prompter.core.project import Project
 
-from .base import BaseScraper
 from ..services.jina.client import JinaReader
 from ..utils.file_utils import sanitize_filename, write_content
 
-class SequentialScraper(BaseScraper):
+class SequentialScraper():
     """Simple sequential web scraper implementation."""
     
     def __init__(self, project: Project):
