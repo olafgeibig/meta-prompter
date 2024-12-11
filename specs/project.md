@@ -52,42 +52,30 @@ This ensures transparency and control over LLM-related expenses while maintainin
 name: "langchain-tools"
 description: "LangChain documentation for tool development"
 created: "2024-11-07"
-cost_control:
-  token_counting: true               # Enable token counting before LLM operations
-  prompt_threshold: 1000             # Prompt user if operation exceeds this token count
+path: "langchain-tools"  # Project directory path
 scrape_job:
-  seed_urls:
-    - "https://python.langchain.com/docs/modules/agents/tools/"
+  seed_urls: []         # Starting URLs for scraping
+  max_pages: 5          # Maximum number of pages to scrape
   spider_options:
-    follow_links:                     # Whether to follow links found in pages
-    restrict_domain: true             # Restrict to domain of seed URL
-    restrict_path: true               # Restrict to path of seed URL
-    max_depth: 3                      # How deep to crawl from seed URL
-    max_pages: 100                    # maximum page count
-    exclusion_patterns:               # URLs matching these patterns will be skipped
-      - "*/api/*"
-      - "*/changelog/*"
-      - "*/legacy/*"
-  content_conversion:
-    use_jina_reader: true            # Use Jina Reader API for HTML to markdown conversion
+    follow_links: true  # Whether to follow links found in pages
+    restrict_domain: true  # Restrict to domain of seed URL
+    restrict_path: true   # Restrict to path of seed URL
+    max_depth: 5         # How deep to crawl from seed URL
+    exclusion_patterns: []  # URLs matching these patterns will be skipped
 
 cleaning:
-  prompt: |
-    Clean the following documentation while:
-    1. Removing navigation elements
-    2. Standardizing formatting
-    3. Preserving code examples
-    Content: {content}
+  prompt: "Clean and format the following content. Remove any navigation elements or other web-specific artifacts. Ensure the content is formatted consistently across different documentation sources."
+  max_docs: 5           # Maximum number of documents to clean in one run
+  model: "gemini/gemini-1.5-flash"  # Model to use for cleaning
+  max_tokens: 128000    # Maximum tokens for cleaning prompt
+  temperature: 0.1      # Temperature for cleaning
 
-meta_prompts:
-  tool_creation:                      # Will generate meta_prompts/tool_creation.md
-    description: "Context for creating custom LangChain tools"
-    prompt: |
-      Extract relevant documentation sections for:
-      Task: Creating custom tools in LangChain
-      Requirements:
-      - Focus on tool interface
-      - Include essential methods
+generation_jobs:        # Dictionary of named generation jobs
+  tool_creation:        # Example generation job for tool creation docs
+    prompt: "Extract and format documentation sections related to creating custom tools. Focus on the tool interface and essential methods."
+    model: "gemini/gemini-1.5-flash"  # Model to use for generation
+    max_tokens: 128000  # Maximum tokens for generation prompt
+    temperature: 0.1    # Temperature for generation
 ```
 
 ### 2.3 Data Models
