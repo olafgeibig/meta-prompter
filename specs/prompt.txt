@@ -1,15 +1,35 @@
+<instructions>
+1. Fix the following code so the cli supports the following commands:
+```
+mp init <project> <options>      # Create new project with default config
+mp status <project>     # Display project status and validate project configuration
+mp scrape <project>     # Run scrape job
+mp clean <project>      # Run cleaning job
+mp stage <project>      # Stage documents for generation
+mp create <project> <job> <options> # Create new generation job 
+mp generate <project> <job>  # Run generation job
+
+create options
+--prompt # Generation prompt template
+--model # LiteLLM model identifier
+--max-tokens # Maximum tokens for generation
+--temperature # Temperature for generation
+```
+2. Fix the code so it outputs the help screen with all agrgumets and options
+</instructions>
+
+<code>
 from pathlib import Path
 import click
 import sys
-import logging
 from typing import Optional
 
 from meta_prompter.core.project import Project, GenerationJobConfig
-from meta_prompter.scrapers.sequential import SequentialScraper
+from meta_prompter.scrapers.parallel import ParallelScraper
 from meta_prompter.utils.logging import setup_logging
 
 # Configure logging
-setup_logging(log_level=logging.DEBUG)
+setup_logging(log_file=Path("logs/metaprompter.log"))
 
 class ProjectPath(click.Path):
     """Custom path type that loads and validates project files."""
@@ -18,18 +38,14 @@ class ProjectPath(click.Path):
         if path is None:
             return None
         try:
-            yaml_path = get_project_path(path)
-            project = Project.from_yaml(yaml_path)
+            project = Project.from_yaml(Path(path))
             return project
         except Exception as e:
             self.fail(f'Failed to load project: {str(e)}', param, ctx)
 
 def get_project_path(project_name: str) -> Path:
     """Get the path to a project's YAML file."""
-    project_dir = Path(project_name)
-    if project_dir.is_dir():
-        return project_dir / "project.yaml"
-    return Path(project_name)  # Fallback for backward compatibility
+    return Path(f"{project_name}.yaml")
 
 @click.group(invoke_without_command=True)
 @click.pass_context
@@ -40,17 +56,69 @@ def cli(ctx):
         click.echo(ctx.get_help())
         ctx.exit()
 
+def create_project_structure(project_name: str) -> Path:
+    """Create project directory structure."""
+    project_dir = Path(project_name)
+    
+    # Create project directory
+    if project_dir.exists():
+        click.echo(f"Error: Directory {project_name} already exists", err=True)
+        sys.exit(1)
+    
+    # Create directory structure
+    directories = [
+        "scraped",
+        "cleaned",
+        "staged",
+        "meta_prompts"
+    ]
+    
+    project_dir.mkdir()
+    for dir_name in directories:
+        (project_dir / dir_name).mkdir()
+        
+    # Create empty database
+    (project_dir / "project.db").touch()
+    
+    return project_dir
+
 @cli.command()
 @click.argument('project')
 def init(project: str):
     """Create a new project with default configuration."""
-    try:
-        project_config = Project.create(project)
-        click.echo(f"Created new project: {project_config.path}")
-        click.echo("\nEdit project.yaml to configure your workflow")
-    except ValueError as e:
-        click.echo(f"Error: {str(e)}", err=True)
-        sys.exit(1)
+    # Create project directory structure
+    project_dir = create_project_structure(project)
+    project_path = project_dir / "project.yaml"
+    
+    # Create default project
+    project_config = Project(
+        name=project,
+        description="New MetaPrompter project",
+        path=project_dir,
+        scrape_job={
+            "seed_urls": [],
+            "max_pages": 5,
+            "spider_options": {
+                "follow_links": True,
+                "restrict_domain": True,
+                "restrict_path": True,
+                "max_depth": 5,
+                "exclusion_patterns": []
+            }
+        },
+        cleaning={
+            "prompt": "Clean and format the following content. Remove any navigation elements or other web-specific artifacts. Ensure the content is formatted consistently across different documentation sources.",
+            "max_docs": 5,
+            "model": "gemini/gemini-1.5-flash",
+            "max_tokens": 128000,
+            "temperature": 0.1
+        }
+    )
+    
+    # Save project file
+    project_config.to_yaml(project_path)
+    click.echo(f"Created new project: {project_dir}")
+    click.echo("\nEdit project.yaml to configure your workflow")
 
 @cli.command()
 @click.argument('project', type=ProjectPath())
@@ -93,10 +161,18 @@ def scrape(project: Project):
     click.echo(f"Starting scrape job for {project.name}")
     click.echo(f"Max pages: {project.scrape_job.max_pages}")
     
-    scraper = SequentialScraper(project)
-    scraper.run()
-    # project.to_yaml(get_project_path(project.name))
-    click.echo("Scraping completed successfully")
+    scraper = ParallelScraper(
+        max_workers=3,
+        output_dir=Path(project.scrape_job.output_dir)
+    )
+    
+    try:
+        scraper.scrape(project.scrape_job)
+        project.to_yaml(get_project_path(project.name))
+        click.echo("Scraping completed successfully")
+    except Exception as e:
+        click.echo(f"Scraping failed: {str(e)}", err=True)
+        sys.exit(1)
 
 @cli.command()
 @click.argument('project', type=ProjectPath())
@@ -168,3 +244,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+</code>

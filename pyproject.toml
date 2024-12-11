@@ -18,7 +18,7 @@ dev = [
 ]
 
 [project.scripts]
-app = "meta_prompter:main"
+app = "meta_prompter.main:cli"
 
 [build-system]
 requires = ["hatchling"]

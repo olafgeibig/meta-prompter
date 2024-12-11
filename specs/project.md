@@ -308,15 +308,20 @@ generator --> llm
 
 ### 4.1 Commands
 ```bash
-mp init <project>       # Create new project with default config
+mp init <project> <options>      # Create new project with default config
 mp status <project>     # Display project status and validate project configuration
 mp scrape <project>     # Run scrape job
 mp clean <project>      # Run cleaning job
 mp stage <project>      # Stage documents for generation
-mp create <project> <job>  # Create new generation job
+mp create <project> <job> <options> # Create new generation job 
 mp generate <project> <job>  # Run generation job
-```
 
+create options
+--prompt # Generation prompt template
+--model # LiteLLM model identifier
+--max-tokens # Maximum tokens for generation
+--temperature # Temperature for generation
+```
 ### 4.2 Command Flow
 ```plantuml
 @startuml

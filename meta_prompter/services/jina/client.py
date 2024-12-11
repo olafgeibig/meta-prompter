@@ -1,8 +1,6 @@
 import os
 import requests
 from dotenv import load_dotenv
-from pathlib import Path
-from typing import Dict, Any
 from .models import ScrapeResponse
 
 class JinaReader:
@@ -26,7 +24,7 @@ class JinaReader:
         }
 
         payload = {
-            "url": url,
+            "url": str(url),  # Convert URL to string
             "options": "Markdown"
         }
 
