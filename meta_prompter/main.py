@@ -4,12 +4,12 @@ import sys
 import logging
 from typing import Optional
 
-from meta_prompter.core.project import Project, GenerationJobConfig
+from meta_prompter.core.project import Project
 from meta_prompter.scrapers.sequential import SequentialScraper
 from meta_prompter.utils.logging import setup_logging
 
 # Configure logging
-setup_logging(log_level=logging.DEBUG)
+setup_logging(log_level=logging.INFO)
 
 class ProjectPath(click.Path):
     """Custom path type that loads and validates project files."""

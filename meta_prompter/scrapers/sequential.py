@@ -4,7 +4,7 @@ from typing import Optional, Set, Dict, List
 from urllib.parse import urlparse
 from meta_prompter.core.project import Project
 
-from ..services.jina.client import JinaReader
+from .jina import JinaReader
 from ..utils.file_utils import sanitize_filename, write_content
 
 class SequentialScraper():
