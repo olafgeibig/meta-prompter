@@ -1,0 +1,9 @@
+Purpose: Extract the relevant parts from the product documentation for a given topic, so that an AI coding assistant is provided with the context needed to generate code that uses the product. 
+Instructions:
+    Identify the relevant parts of the documentation that matches the topic.
+    Extract this relevant information and compile it into a document that shall be the context for a coding assistant
+    Try to compress the textual information so that an AI can understand it but does not loose information.
+    Ensure that the generated context is as small as possible while maintaining correctness and factual comprehensiveness for the topic
+    Only add relevant example code. You may remove irrelevant parts from example code but don't change the parts you keep.
+Sections: content, topic
+Variables: content, topic

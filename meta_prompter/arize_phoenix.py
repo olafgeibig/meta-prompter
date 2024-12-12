@@ -3,7 +3,7 @@ from opentelemetry.sdk.resources import Resource
 from openinference.semconv.resource import ResourceAttributes
 
 resource = Resource(attributes={
-    ResourceAttributes.PROJECT_NAME: 'docs2prompt'
+    ResourceAttributes.PROJECT_NAME: 'meta-prompter'
 })
 
 # OpenAI Instrumentation

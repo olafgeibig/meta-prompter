@@ -34,7 +34,8 @@ class CleaningConfig(BaseModel):
 
 class GenerationJobConfig(BaseModel):
     """Generation job configuration."""
-    prompt: str = Field(..., description="Prompt template for generation")
+    prompt: str = Field(..., description="Prompt template for docs prompt generation")
+    topic: str = Field(..., description="Topic of the docs prompt generation")
     model: str = Field(default="gemini/gemini-1.5-flash", description="Model to use for generation for LiteLLM")
     max_tokens: int = Field(default=128000, description="Maximum tokens for generation prompt")
     temperature: float = Field(default=0.1, description="Temperature for generation")
