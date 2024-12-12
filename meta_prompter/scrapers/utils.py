@@ -1,8 +1,9 @@
 """URL processing utilities for web scraping."""
-from typing import List, Optional
+from typing import Optional
 from urllib.parse import urljoin, urlparse
 
 from pydantic import HttpUrl
+from meta_prompter.core.project import Project
 
 
 def is_same_domain(url1: str, url2: str) -> bool:
@@ -33,17 +34,22 @@ def normalize_url(url: str, base_url: Optional[str] = None) -> HttpUrl:
     return HttpUrl(url)
 
 
-def should_follow_url(url: str, seed_url: str, domain_restricted: bool, path_restricted: bool,
-                     exclusion_patterns: Optional[List[str]] = None) -> bool:
-    """Determine if a URL should be followed based on various restrictions."""
-    if domain_restricted and not is_same_domain(url, seed_url):
+def should_follow_url(url: str, seed_url: str, project: Project) -> bool:
+    """Determine if a URL should be followed based on project configuration.
+    
+    Args:
+        url: The URL to check
+        seed_url: The reference seed URL to check against
+        project: Project object containing scraping configuration
+    """
+    if project.scrape_job.domain_restricted and not is_same_domain(url, seed_url):
         return False
 
-    if path_restricted and not is_under_path(url, seed_url):
+    if project.scrape_job.path_restricted and not is_under_path(url, seed_url):
         return False
 
-    if exclusion_patterns:
-        for pattern in exclusion_patterns:
+    if project.scrape_job.exclusion_patterns:
+        for pattern in project.scrape_job.exclusion_patterns:
             if pattern in url:
                 return False
 

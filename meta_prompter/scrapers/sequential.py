@@ -5,6 +5,7 @@ from urllib.parse import urlparse
 from meta_prompter.core.project import Project
 
 from .jina import JinaReader
+from .utils import should_follow_url, normalize_url
 from ..utils.file_utils import sanitize_filename, write_content
 
 class SequentialScraper():
@@ -27,28 +28,25 @@ class SequentialScraper():
         if base_url in self.scraped_urls:
             return False
             
-        # Parse URLs
-        parsed_url = urlparse(base_url)
-        
         # For domain/path restrictions, use first seed URL as reference if no source_url
         reference_url = source_url
         if not reference_url and self.project.scrape_job.seed_urls:
             reference_url = str(self.project.scrape_job.seed_urls[0])
             
-        if reference_url:
-            parsed_ref = urlparse(reference_url.split('#')[0])  # Remove anchor from reference
-            
-            # Check domain restriction
-            if self.project.scrape_job.domain_restricted and parsed_url.netloc != parsed_ref.netloc:
-                logging.debug(f"Skipping {url} - different domain than {reference_url}")
+        if not reference_url:
+            return True
+
+        # Check URL validity and restrictions using utils
+        try:
+            if not should_follow_url(
+                url=base_url,
+                seed_url=reference_url,
+                project=self.project
+            ):
                 return False
-                
-            # Check path restriction - only up to last / in seed URL
-            if self.project.scrape_job.path_restricted:
-                ref_path_base = '/'.join(parsed_ref.path.rstrip('/').split('/')[:-1]) + '/'
-                if not parsed_url.path.startswith(ref_path_base):
-                    logging.debug(f"Skipping {url} - not under path {ref_path_base}")
-                    return False
+        except Exception as e:
+            logging.debug(f"Invalid URL {url}: {str(e)}")
+            return False
             
         # Check depth
         if source_url:
@@ -56,12 +54,6 @@ class SequentialScraper():
             new_depth = source_depth + 1
             if self.project.scrape_job.max_depth and new_depth > self.project.scrape_job.max_depth:
                 logging.debug(f"Skipping {url} - exceeds max depth of {self.project.scrape_job.max_depth}")
-                return False
-                
-        # Check exclusion patterns
-        for pattern in self.project.scrape_job.exclusion_patterns:
-            if pattern in url:
-                logging.debug(f"Skipping {url} - matches exclusion pattern: {pattern}")
                 return False
                 
         return True
