@@ -249,7 +249,7 @@ def generate(project: Project, job: str) -> None:
             raise CliError("No documents staged for generation")
             
         click.echo(f"Found {len(staged_docs)} staged documents")
-        project.generate(job, staged_docs)
+        context = project.generate_context(job, staged_docs)
 
         click.echo("Generation completed successfully")
         project.to_yaml(get_project_path(project.name))

@@ -1,0 +1,21 @@
+name: crewai
+description: New MetaPrompter project
+created: '2024-12-12T15:14:50.651557'
+scrape_job:
+  name: default
+  seed_urls: []
+  follow_links: true
+  domain_restricted: true
+  path_restricted: true
+  max_pages: 5
+  max_depth: 5
+  exclusion_patterns: []
+cleaning:
+  prompt: Clean and format the following content. Remove any navigation elements or
+    other web-specific artifacts. Ensure the content is formatted consistently across
+    different documentation sources.
+  max_docs: 5
+  model: gemini/gemini-1.5-flash
+  max_tokens: 128000
+  temperature: 0.1
+generation_jobs: {}

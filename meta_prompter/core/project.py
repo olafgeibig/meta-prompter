@@ -260,7 +260,7 @@ class Project(BaseModel):
         return project
     
 
-    def generate(self, job, staged_docs: List[Path]):
+    def generate_context(self, job, staged_docs: List[Path]) -> str:
         """Run a generation job.
         
         Args:
@@ -278,12 +278,15 @@ class Project(BaseModel):
         
         prompt_template = self.generation_jobs[job].prompt
         prompt = prompt_template.format(topic=self.generation_jobs[job].topic, content=input_doc)
-        
-        # logger.info(f"Prompt:\n{prompt}")
+    
 
         response = litellm.completion(
             model="gemini/gemini-2.0-flash-exp",
             messages=[{"content": prompt, "role": "user"}]
         )
 
-        logger.info(f"Response:\n{response}")
+        if response and response.choices:
+            answer = response.choices[0].message.content
+            return answer
+        else:
+            return "No response from the model"
