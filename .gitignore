@@ -167,5 +167,4 @@ cython_debug/
 
 output/
 test_output/
-dummy/
-crewai/
+projects/

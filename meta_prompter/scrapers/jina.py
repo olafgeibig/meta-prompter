@@ -3,9 +3,10 @@ import requests
 from dotenv import load_dotenv
 from .models import ScrapeResponse
 
+
 class JinaReader:
     """Client for the Jina Reader API."""
-    
+
     def __init__(self):
         load_dotenv()
         self.api_key = os.getenv("JINA_API_KEY")
@@ -20,12 +21,12 @@ class JinaReader:
             "Content-Type": "application/json",
             "Accept": "application/json",
             "X-No-Cache": "true",
-            "X-With-Links-Summary": "true"
+            "X-With-Links-Summary": "true",
         }
 
         payload = {
             "url": str(url),  # Convert URL to string
-            "options": "Markdown"
+            "options": "Markdown",
         }
 
         try:
@@ -40,7 +41,7 @@ class JinaReader:
             return ScrapeResponse(
                 content=content,
                 links=list(links.values()) if isinstance(links, dict) else [],
-                images=[]  # Add empty images list to match updated model
+                images=[],  # Add empty images list to match updated model
             )
         except requests.exceptions.RequestException as e:
             raise Exception(f"Failed to scrape {url}: {str(e)}")
