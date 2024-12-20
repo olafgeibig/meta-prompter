@@ -14,16 +14,35 @@ def is_same_domain(url1: str, url2: str) -> bool:
 
 
 def is_under_path(url: str, base_url: str) -> bool:
-    """Check if a URL is under the path of the base URL."""
+    """Check if a URL is under the path of the base URL.
+    
+    Args:
+        url: URL to check
+        base_url: Base URL to check against
+        
+    Returns:
+        bool: True if url is under base_url's path
+        
+    Example:
+        base_url: https://docs.example.com/guide/
+        url: https://docs.example.com/guide/intro -> True
+        url: https://docs.example.com/api -> False
+    """
     parsed_url = urlparse(url)
     parsed_base = urlparse(base_url)
     
     if parsed_url.netloc != parsed_base.netloc:
         return False
     
+    # Normalize paths by stripping trailing slashes
     url_path = parsed_url.path.rstrip('/')
-    base_path = '/'.join(parsed_base.path.rstrip('/').split('/')[:-1])  # Get parent path
+    base_path = parsed_base.path.rstrip('/')
     
+    # Empty base path means root, which all paths are under
+    if not base_path:
+        return True
+        
+    # Check if URL path starts with base path
     return url_path.startswith(base_path)
 
 
@@ -52,5 +71,5 @@ def should_follow_url(url: str, seed_url: str, project: Project) -> bool:
         for pattern in project.scrape_job.exclusion_patterns:
             if pattern in url:
                 return False
-
+                
     return True

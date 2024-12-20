@@ -4,16 +4,16 @@ import sys
 from typing import Optional, NoReturn, Literal, TypeAlias
 from dataclasses import dataclass
 import logging
-from logging import Logger, getLogger
+from logging import Logger
 
 from meta_prompter.core.project import Project
 from meta_prompter.scrapers.sequential import SequentialScraper
-from meta_prompter.utils.logging import setup_logging
+from meta_prompter.utils.logging import get_logger
 from meta_prompter.arize_phoenix import litellm_instrumentation
 
 # Type aliases
 ProjectSource: TypeAlias = Literal['scraped', 'cleaned']
-logger: Logger = setup_logging(
+logger: Logger = get_logger(
     log_level=logging.INFO,
     log_file=None
 )

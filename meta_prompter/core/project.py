@@ -5,11 +5,13 @@ import shutil
 from click import prompt
 from pydantic import BaseModel, Field
 from .models import ScrapeJobConfig, CleaningConfig, GenerationJobConfig
+from meta_prompter.utils.logging import get_logger
 import tiktoken
 import logging
 import litellm
+import meta_prompter.utils.file_utils as file_utils
 
-logger = logging.getLogger(__name__)
+logger = get_logger(name=__name__)
 
 class Project(BaseModel):
     """Project configuration."""
@@ -92,31 +94,6 @@ class Project(BaseModel):
         
         return sorted([f for f in staged_dir.iterdir() if f.is_file() and f.suffix == '.md'])
 
-    def get_input_doc(self, staged_files: list[Path]) -> str:
-        """
-        Concatenate the content of all staged files into a single document.
-
-        Args:
-            staged_files: List of paths to staged markdown files
-
-        Returns:
-            A single string containing all concatenated file contents, with file
-            names as headers and newlines between files
-        """
-        if not staged_files:
-            return ""
-        
-        contents = []
-        for file_path in staged_files:
-            try:
-                contents.append(f"# {file_path.name}\n")
-                contents.append(file_path.read_text(encoding='utf-8'))
-                contents.append("\n\n")  # Add spacing between files
-            except Exception as e:
-                raise ValueError(f"Failed to read {file_path.name}: {str(e)}")
-        
-        return "".join(contents).strip()
-
     def add_generation_job(self, job_name: str, topic: Optional[str] = None,
                            model: Optional[str] = None, max_tokens: Optional[int] = None,
                            temperature: Optional[float] = None) -> str:
@@ -146,18 +123,18 @@ class Project(BaseModel):
 </purpose>
 
 <instructions>
-    <instruction>Carefully review the [[content]] to find the portions most relevant to the [[topic]].</instruction>
+    <instruction>Carefully review the [[content]] to find the portions most relevant to the topic.</instruction>
     <instruction>Extract and compress the selected parts, ensuring that important details and factual integrity are maintained.</instruction>
-    <instruction>Include only pertinent code snippets that help illustrate the usage for the [[topic]]. Remove any irrelevant code or text.</instruction>
+    <instruction>Include only pertinent code snippets that help illustrate the usage for the topic. Remove any irrelevant code or text.</instruction>
     <instruction>Keep the resulting context as concise as possible without losing essential information.</instruction>
 </instructions>
 
 <topic>
-    [[topic]]
+    {topic}
 </topic>
 
 <content>
-    [[content]]
+    {content}
 </content>""",
             topic=topic or "CHANGEME",
             model=model or "gemini/gemini-1.5-flash",
@@ -259,6 +236,29 @@ class Project(BaseModel):
         project.to_yaml(project_path)
         return project
     
+    def get_input_doc(self, staged_files: list[Path]) -> str:
+        """
+        Concatenate the content of all staged files into a single XML document.
+
+        Args:
+            staged_files: List of paths to staged markdown files
+
+        Returns:
+            A single XML string containing all files wrapped in <doc> tags with filenames
+            as name attributes
+        """
+        if not staged_files:
+            return ""
+        
+        contents = []
+        for file_path in staged_files:
+            try:
+                content = file_path.read_text(encoding='utf-8')
+                contents.append(f'<doc name="{file_path.name}">{content}</doc>')
+            except Exception as e:
+                raise ValueError(f"Failed to read {file_path.name}: {str(e)}")
+        
+        return "\n".join(contents)
 
     def generate_context(self, job, staged_docs: List[Path]) -> str:
         """Run a generation job.
@@ -268,6 +268,7 @@ class Project(BaseModel):
         """
     
         input_doc = self.get_input_doc(staged_docs)
+        file_utils.write_content(self.get_meta_prompts_dir() / f"{job}.xml", input_doc)
         
         # Count tokens using tiktoken
         encoding = tiktoken.get_encoding("cl100k_base")  # Base encoding for Gemini models
@@ -280,13 +281,14 @@ class Project(BaseModel):
         prompt = prompt_template.format(topic=self.generation_jobs[job].topic, content=input_doc)
     
 
-        response = litellm.completion(
-            model="gemini/gemini-2.0-flash-exp",
-            messages=[{"content": prompt, "role": "user"}]
-        )
+        # response = litellm.completion(
+        #     model=self.generation_jobs[job].model,
+        #     messages=[{"content": prompt, "role": "user"}]
+        # )
 
-        if response and response.choices:
-            answer = response.choices[0].message.content
-            return answer
-        else:
-            return "No response from the model"
+        # if response and response.choices:
+        #     answer = response.choices[0].message.content
+        #     return answer
+        # else:
+        #     return "No response from the model"
+        return prompt

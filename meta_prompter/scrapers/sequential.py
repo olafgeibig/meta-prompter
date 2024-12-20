@@ -1,12 +1,11 @@
 from datetime import datetime
-import logging
 from typing import Optional, Set, Dict, List
-from urllib.parse import urlparse
 from meta_prompter.core.project import Project
+from meta_prompter.utils.logging import get_logger
 
 from .jina import JinaReader
-from .utils import should_follow_url, normalize_url
-from ..utils.file_utils import sanitize_filename, write_content
+from .utils import should_follow_url
+from ..utils.file_utils import create_filename_from_url, write_content
 
 class SequentialScraper():
     """Simple sequential web scraper implementation."""
@@ -15,6 +14,7 @@ class SequentialScraper():
         self.project = project
         self.output_dir = project.get_scraped_dir()
         self.jina_reader = JinaReader()
+        self.logger = get_logger(name=__name__)
         
         # Simple state tracking
         self.scraped_urls: Set[str] = set()
@@ -45,7 +45,7 @@ class SequentialScraper():
             ):
                 return False
         except Exception as e:
-            logging.debug(f"Invalid URL {url}: {str(e)}")
+            self.logger.debug(f"Invalid URL {url}: {str(e)}")
             return False
             
         # Check depth
@@ -53,7 +53,7 @@ class SequentialScraper():
             source_depth = self.url_depths.get(source_url.split('#')[0], 0)
             new_depth = source_depth + 1
             if self.project.scrape_job.max_depth and new_depth > self.project.scrape_job.max_depth:
-                logging.debug(f"Skipping {url} - exceeds max depth of {self.project.scrape_job.max_depth}")
+                self.logger.debug(f"Skipping {url} - exceeds max depth of {self.project.scrape_job.max_depth}")
                 return False
                 
         return True
@@ -61,27 +61,22 @@ class SequentialScraper():
     def _scrape_url(self, url: str, depth: int) -> Optional[tuple[str, str, List[str]]]:
         """Scrape a single URL and return content, filename and discovered links."""
         try:
-            logging.info(f"Scraping {url}")
             response = self.jina_reader.scrape_website(url)
             
             if not response.content:
-                logging.warning(f"No content returned for {url}")
+                self.logger.warning(f"No content returned for {url}")
                 return None
-                
-            # Extract title from the first line of content
-            lines = response.content.split('\n')
-            title = lines[0].strip('# ') if lines else url.split('/')[-1]
             
             # Save content to file
-            filename = sanitize_filename(title) + ".md"
+            filename = create_filename_from_url(url, max_length=100)
             output_path = self.output_dir / filename
             write_content(output_path, response.content)
             
-            logging.info(f"Successfully scraped {url} to {output_path}")
+            self.logger.info(f"Scraped {url} to {filename}")
             return response.content, str(output_path), response.links
             
         except Exception as e:
-            logging.error(f"Error scraping {url}: {str(e)}")
+            self.logger.error(f"Error scraping {url}: {str(e)}")
             return None
 
     def run(self) -> None:
@@ -114,7 +109,7 @@ class SequentialScraper():
                 if filename not in saved_files:
                     pages_scraped += 1
                     saved_files.add(filename)
-                    logging.info(f"Progress: {pages_scraped}/{self.project.scrape_job.max_pages} pages scraped")
+                    self.logger.info(f"Progress: {pages_scraped}/{len(urls_to_scrape) + len(self.scraped_urls)} pages scraped")
                 
                 # Store the scraped URL
                 self.scraped_urls.add(base_url)
@@ -127,7 +122,7 @@ class SequentialScraper():
                             urls_to_scrape.append((link, depth + 1))
                             
             except Exception as e:
-                logging.error(f"Error scraping {url}: {str(e)}")
+                self.logger.error(f"Error scraping {url}: {str(e)}")
                 continue
                 
             # Break if we've reached max pages
@@ -138,8 +133,8 @@ class SequentialScraper():
         end_time = datetime.now()
         duration = (end_time - start_time).total_seconds()
         
-        logging.info("Scraping completed!")
-        logging.info(f"""
+        self.logger.info("Scraping completed!")
+        self.logger.info(f"""
             - Duration: {duration:.2f} seconds
             - Total unique pages discovered: {len(self.discovered_urls)}
             - Unique pages scraped: {pages_scraped}
