@@ -1,5 +1,8 @@
 from datetime import datetime
 from typing import Optional, Set, Dict, List
+from collections import deque
+from urllib.parse import urlparse
+
 from meta_prompter.core.project import Project
 from meta_prompter.utils.logging import get_logger
 
@@ -7,41 +10,48 @@ from .jina import JinaReader
 from .utils import should_follow_url
 from ..utils.file_utils import create_filename_from_url, write_content
 
-
 class SequentialScraper:
     """Simple sequential web scraper implementation."""
 
     def __init__(self, project: Project):
         self.project = project
         self.output_dir = project.get_scraped_dir()
+        self.output_dir.mkdir(exist_ok=True)
         self.jina_reader = JinaReader()
         self.logger = get_logger(name=__name__)
 
-        # Simple state tracking
-        self.scraped_urls: Set[str] = set()
-        self.url_depths: Dict[str, int] = {}
-        self.discovered_urls: Set[str] = set()
+        # State tracking
+        self.scraped_urls: Set[str] = set()  # URLs that have been scraped
+        self.url_depths: Dict[str, int] = {}  # Track depth of each URL
+        self.discovered_urls: Set[str] = set()  # URLs that meet criteria for scraping
+        self.all_found_urls: Set[str] = set()  # All URLs found, regardless of criteria
 
     def _should_scrape_url(self, url: str, source_url: Optional[str]) -> bool:
         """Check if URL should be scraped based on configuration."""
-        # Skip if already scraped
         base_url = url.split("#")[0]  # Remove anchor
+
+        # Skip if already scraped
         if base_url in self.scraped_urls:
             return False
 
-        # For domain/path restrictions, use first seed URL as reference if no source_url
+        # For domain/path restrictions, use source_url as reference
         reference_url = source_url
+
         if not reference_url and self.project.scrape_job.seed_urls:
-            reference_url = str(self.project.scrape_job.seed_urls[0])
+            # If no source_url, and we have seed URLs, it means this is a seed URL being checked initially.
+            # Use the domain of the current URL as the reference to allow scraping of the seed itself.
+            parsed_url = urlparse(url)
+            reference_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
 
         if not reference_url:
             return True
 
-        # Check URL validity and restrictions using utils
+        # Check URL against project restrictions
         try:
             if not should_follow_url(
                 url=base_url, seed_url=reference_url, project=self.project
             ):
+                self.logger.debug(f"Not following {url} based on restrictions (ref: {reference_url})")
                 return False
         except Exception as e:
             self.logger.debug(f"Invalid URL {url}: {str(e)}")
@@ -60,6 +70,8 @@ class SequentialScraper:
                 )
                 return False
 
+        # If we get here, the URL meets all criteria
+        self.discovered_urls.add(base_url)
         return True
 
     def _scrape_url(self, url: str, depth: int) -> Optional[tuple[str, str, List[str]]]:
@@ -83,27 +95,36 @@ class SequentialScraper:
             self.logger.error(f"Error scraping {url}: {str(e)}")
             return None
 
+    def _process_discovered_links(self, links: List[str], source_url: str, depth: int) -> None:
+        """Process newly discovered links and add valid ones to the queue."""
+        for link in links:
+            self.all_found_urls.add(link)  # Track all URLs found
+            if self._should_scrape_url(link, source_url):
+                self.url_depths[link] = depth + 1
+                self.urls_to_scrape.append((link, depth + 1))
+
     def run(self) -> None:
-        """Run scraping job sequentially."""
+        """Run the scraper."""
         start_time = datetime.now()
         pages_scraped = 0
-        urls_to_scrape = [
-            (str(url), 0) for url in self.project.scrape_job.seed_urls
-        ]  # (url, depth)
+        self.urls_to_scrape = deque(
+            [(str(url), 0) for url in self.project.scrape_job.seed_urls]
+        )  # (url, depth)
         saved_files = set()  # Track unique files saved
 
-        while urls_to_scrape and (
+        while self.urls_to_scrape and (
             not self.project.scrape_job.max_pages
             or pages_scraped < self.project.scrape_job.max_pages
         ):
-            url, depth = urls_to_scrape.pop(0)
-
-            # Skip if already scraped or shouldn't scrape
+            url, depth = self.urls_to_scrape.popleft()
             base_url = url.split("#")[0]
+
+            # Skip if already scraped
             if base_url in self.scraped_urls:
                 continue
 
-            if not self._should_scrape_url(url, None):
+            # Check if we should scrape the URL
+            if not self._should_scrape_url(url, None if depth == 0 else url):
                 continue
 
             try:
@@ -118,19 +139,22 @@ class SequentialScraper:
                 if filename not in saved_files:
                     pages_scraped += 1
                     saved_files.add(filename)
-                    self.logger.info(
-                        f"Progress: {pages_scraped}/{len(urls_to_scrape) + len(self.scraped_urls)} pages scraped"
-                    )
+                    # Log progress
+                    if self.project.scrape_job.max_pages:
+                        self.logger.info(
+                            f"Progress: {pages_scraped}/{self.project.scrape_job.max_pages} pages scraped, {len(self.discovered_urls)} pages to scrape"
+                        )
+                    else:
+                        self.logger.info(
+                            f"Progress: {pages_scraped} pages scraped, {len(self.discovered_urls)} pages to scrape"
+                        )
 
                 # Store the scraped URL
                 self.scraped_urls.add(base_url)
-                self.url_depths[base_url] = depth
 
                 # Process discovered links if we should follow them
                 if self.project.scrape_job.follow_links:
-                    for link in discovered_links:
-                        if self._should_scrape_url(link, url):
-                            urls_to_scrape.append((link, depth + 1))
+                    self._process_discovered_links(discovered_links, base_url, depth)
 
             except Exception as e:
                 self.logger.error(f"Error scraping {url}: {str(e)}")
@@ -150,7 +174,8 @@ class SequentialScraper:
         self.logger.info("Scraping completed!")
         self.logger.info(f"""
             - Duration: {duration:.2f} seconds
-            - Total unique pages discovered: {len(self.discovered_urls)}
-            - Unique pages scraped: {pages_scraped}
-            - Maximum depth reached: {max(self.url_depths.values()) if self.url_depths else 0}
+            - Total URLs found: {len(self.all_found_urls)}
+            - URLs meeting criteria: {len(self.discovered_urls)}
+            - Pages scraped: {pages_scraped}
+            - Average time per page: {duration/pages_scraped if pages_scraped else 0:.2f} seconds
         """)

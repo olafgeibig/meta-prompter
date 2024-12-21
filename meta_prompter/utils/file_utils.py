@@ -26,8 +26,8 @@ def create_filename_from_url(url: str, max_length: int = 100) -> str:
         A filename in the format: path-segments-page.md
 
     Example:
-        https://docs.example.com/guide/intro -> guide-intro.md
-        https://docs.example.com/api/v1/auth -> api-v1-auth.md
+        https://docs.example.com/guide/intro.html -> guide-intro.md
+        https://docs.example.com/api/v1/auth.html -> api-v1-auth.md
     """
     # Parse the URL and get the path
     parsed = urlparse(url)
@@ -37,16 +37,28 @@ def create_filename_from_url(url: str, max_length: int = 100) -> str:
         # If no path, use the hostname
         return sanitize_filename(parsed.hostname or "index", max_length)
 
-    # Split path into segments and sanitize each
-    segments = [re.sub(r"[^\w\s-]", "", seg) for seg in path.split("/")]
-    segments = [re.sub(r"\s+", "_", seg) for seg in segments]
-    segments = [seg[:max_length].strip("_") for seg in segments if seg]
+    # Split path into segments and clean each one
+    segments = path.split("/")
+    
+    # Process each segment
+    clean_segments = []
+    for seg in segments:
+        # Remove file extensions (.html, .htm)
+        seg = re.sub(r'\.html?$', '', seg)
+        # Remove other invalid characters
+        seg = re.sub(r"[^\w\s-]", "", seg)
+        # Replace whitespace with underscores
+        seg = re.sub(r"\s+", "_", seg)
+        # Truncate if too long
+        seg = seg[:max_length].strip("_")
+        if seg:
+            clean_segments.append(seg)
 
-    if not segments:
+    if not clean_segments:
         return "index.md"
 
     # Join segments with hyphens
-    return "-".join(segments) + ".md"
+    return "-".join(clean_segments) + ".md"
 
 
 def ensure_directory(directory: Path) -> None:
