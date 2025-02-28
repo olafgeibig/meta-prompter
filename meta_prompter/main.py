@@ -8,13 +8,14 @@ from logging import Logger
 
 from meta_prompter.core.project import Project
 from meta_prompter.scrapers.sequential import SequentialScraper
+from meta_prompter.scrapers.crawl4ai_scraper import Crawl4AIScraper
 from meta_prompter.utils.logging import get_logger
 from meta_prompter.arize_phoenix import litellm_instrumentation
 
 # Type aliases
 ProjectSource: TypeAlias = Literal["scraped", "cleaned"]
 logger: Logger = get_logger(log_level=logging.INFO, log_file=None)
-litellm_instrumentation()
+# litellm_instrumentation()
 
 
 @dataclass
@@ -180,7 +181,8 @@ def status(project: Project):
 
 @cli.command()
 @click.argument("project", type=ProjectPath())
-def scrape(project: Project):
+@click.option("--use-crawl4ai", is_flag=True, help="Use the Crawl4AI scraper instead of sequential")
+def scrape(project: Project, use_crawl4ai: bool = False):
     """Run scrape job with current configuration."""
     if not project.scrape_job.seed_urls:
         click.echo("Error: No seed URLs configured", err=True)
@@ -189,8 +191,33 @@ def scrape(project: Project):
     click.echo(f"Starting scrape job for {project.name}")
     click.echo(f"Max pages: {project.scrape_job.max_pages}")
 
-    scraper = SequentialScraper(project)
-    scraper.run()
+    if use_crawl4ai:
+        click.echo("Using Crawl4AI scraper")
+        # Create scraper configuration
+        scraper_config = {
+            "path_pattern": None,  # Allow any path
+            "exclude_domains": [],
+            "max_depth": project.scrape_job.max_depth,
+            "max_pages": project.scrape_job.max_pages
+        }
+        
+        # Pass configuration directly to the scraper
+        scraper = Crawl4AIScraper(project, config_override=scraper_config)
+        
+        # Async run needs special handling
+        import asyncio
+        asyncio.run(scraper.run())
+        
+        # Show statistics
+        stats = scraper.get_stats()
+        click.echo(f"Pages crawled: {stats['urls_crawled']}")
+        click.echo(f"URLs discovered: {stats['urls_discovered']}")
+        click.echo(f"Max depth reached: {stats['max_depth_reached']}")
+    else:
+        click.echo("Using Sequential scraper")
+        scraper = SequentialScraper(project)
+        scraper.run()
+        
     # project.to_yaml(get_project_path(project.name))
     click.echo("Scraping completed successfully")
 
